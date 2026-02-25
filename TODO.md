@@ -1,8 +1,8 @@
 # TODO
 
 ## 0) Ground Rules
-- [ ] Keep this repo on Arduino framework (`framework = arduino`) for `esp32doit-devkit-v1`.
-- [ ] Use `rssArduinoPlatform` only for platform/hardware/scroll reference, not for architecture or code style.
+- [x] Keep this repo on Arduino framework (`framework = arduino`) for `esp32doit-devkit-v1`.
+- [x] Use `rssArduinoPlatform` only for platform/hardware/scroll reference, not for architecture or code style.
 - [ ] Reach feature parity with `mlhfb/ManCaveScroller` behavior before adding new extras.
 
 ## 1) Project Bootstrap
@@ -34,7 +34,7 @@
 - [x] Config mode text
 - [x] RSS playback (title then description) (placeholder mode scaffolding)
 - [x] Fallback custom messages when RSS unavailable
-- [ ] Keep deterministic source ordering and fair item rotation.
+- [x] Keep deterministic source ordering and fair item rotation.
 
 ## 5) WiFi + Config Mode
 - [ ] Implement AP bootstrap flow when no STA creds are available.
