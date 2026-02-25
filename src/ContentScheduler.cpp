@@ -13,6 +13,7 @@ ContentScheduler::ContentScheduler(Scroller& scroller, DisplayPanel& panel)
       _rssTitleText("RSS placeholder title"),
       _rssDescriptionText("RSS placeholder description"),
       _rssShowTitleNext(true),
+      _rssSegmentProvider(nullptr),
       _fallbackText("Fallback mode") {}
 
 void ContentScheduler::begin(const ScheduledMessage* messages, size_t messageCount,
@@ -32,6 +33,16 @@ void ContentScheduler::begin(const ScheduledMessage* messages, size_t messageCou
 void ContentScheduler::tick() {
   if (_scroller.cycleComplete()) {
     _scroller.clearCycleComplete();
+    startCurrentContent();
+  }
+}
+
+void ContentScheduler::updateMessages(const ScheduledMessage* messages,
+                                      size_t messageCount) {
+  _messages = messages;
+  _messageCount = messageCount;
+  _nextMessageIndex = 0;
+  if (_mode == ContentMode::Messages || _mode == ContentMode::Fallback) {
     startCurrentContent();
   }
 }
@@ -67,6 +78,10 @@ void ContentScheduler::setRssPlaceholder(const String& title,
                                          const String& description) {
   _rssTitleText = title;
   _rssDescriptionText = description;
+}
+
+void ContentScheduler::setRssSegmentProvider(RssSegmentProvider provider) {
+  _rssSegmentProvider = provider;
 }
 
 void ContentScheduler::setFallbackText(const String& text) { _fallbackText = text; }
@@ -118,6 +133,17 @@ bool ContentScheduler::startNextEnabledMessage() {
 }
 
 void ContentScheduler::startRssSegment() {
+  if (_rssSegmentProvider != nullptr) {
+    String text;
+    uint8_t r = 255;
+    uint8_t g = 255;
+    uint8_t b = 255;
+    if (_rssSegmentProvider(text, r, g, b) && text.length() > 0) {
+      _scroller.start(text, _panel.color(r, g, b), _messageDelayMs);
+      return;
+    }
+  }
+
   if (_rssShowTitleNext) {
     _scroller.start(_rssTitleText, _panel.color(245, 245, 245), _messageDelayMs);
   } else {

@@ -1,25 +1,97 @@
 #include <Arduino.h>
 
 #include "AppConfig.h"
+#include "AppTypes.h"
 #include "ContentScheduler.h"
 #include "DisplayPanel.h"
+#include "RssRuntime.h"
 #include "Scroller.h"
+#include "SettingsStore.h"
+#include "WebService.h"
+#include "WifiService.h"
 
+namespace {
+constexpr uint8_t kConfigButtonPin = 0;  // BOOT button on ESP32 DevKit
+constexpr uint32_t kButtonDebounceMs = 250;
+}
+
+SettingsStore gSettingsStore;
+WifiService gWifiService;
+RssRuntime gRssRuntime(gSettingsStore, gWifiService);
 DisplayPanel gDisplay(APP_MATRIX_WIDTH, APP_MATRIX_HEIGHT);
 Scroller gScroller(gDisplay);
 ContentScheduler gScheduler(gScroller, gDisplay);
+WebService gWebService(gSettingsStore, gWifiService);
 
-ScheduledMessage gMessages[] = {
-    {"Phase 3 test message: scrolling is active", 0, 255, 255, true},
-    {"Welcome to ManCaveScroller Arduino rewrite", 255, 195, 0, true},
-    {"Serial: u/d brightness, f/s speed, p step, h help", 0, 255, 0, true},
-};
-
-constexpr size_t kMessageCount = sizeof(gMessages) / sizeof(gMessages[0]);
+ScheduledMessage gScheduledMessages[APP_MAX_MESSAGES];
 
 uint8_t gBrightness = APP_DEFAULT_BRIGHTNESS;
 uint8_t gScrollSpeed = APP_SCROLL_SPEED_DEFAULT;
 uint8_t gPixelStep = APP_SCROLL_PIXEL_STEP_DEFAULT;
+bool gConfigMode = false;
+bool gManualModeOverride = false;
+ContentMode gManualMode = ContentMode::Messages;
+
+bool gLastButtonState = true;
+uint32_t gLastButtonChangeMs = 0;
+
+void syncSchedulerMessagesFromSettings() {
+  const AppSettings& settings = gSettingsStore.settings();
+  for (size_t i = 0; i < APP_MAX_MESSAGES; i++) {
+    gScheduledMessages[i].text = settings.messages[i].text;
+    gScheduledMessages[i].r = settings.messages[i].r;
+    gScheduledMessages[i].g = settings.messages[i].g;
+    gScheduledMessages[i].b = settings.messages[i].b;
+    gScheduledMessages[i].enabled = settings.messages[i].enabled;
+  }
+  gScheduler.updateMessages(gScheduledMessages, APP_MAX_MESSAGES);
+}
+
+bool shouldUseRssPlayback() {
+  const AppSettings& settings = gSettingsStore.settings();
+  return settings.rssEnabled && gRssRuntime.hasEnabledSources() &&
+         gRssRuntime.hasCachedContent();
+}
+
+void applySchedulerMode() {
+  if (gConfigMode) {
+    if (gScheduler.mode() != ContentMode::ConfigPrompt) {
+      gScheduler.setMode(ContentMode::ConfigPrompt);
+    }
+    return;
+  }
+
+  if (gManualModeOverride) {
+    if (gScheduler.mode() != gManualMode) {
+      gScheduler.setMode(gManualMode);
+    }
+    return;
+  }
+
+  const ContentMode target =
+      shouldUseRssPlayback() ? ContentMode::RssPlayback : ContentMode::Fallback;
+  if (gScheduler.mode() != target) {
+    gScheduler.setMode(target);
+  }
+}
+
+void applyRuntimeFromSettings(const AppSettings& settings) {
+  gBrightness = settings.brightness;
+  gScrollSpeed = settings.speed;
+  if (gScrollSpeed < APP_SCROLL_SPEED_MIN) gScrollSpeed = APP_SCROLL_SPEED_MIN;
+  if (gScrollSpeed > APP_SCROLL_SPEED_MAX) gScrollSpeed = APP_SCROLL_SPEED_MAX;
+
+  gDisplay.setBrightness(gBrightness);
+  gScheduler.setMessageDelayMs(appScrollDelayForSpeed(gScrollSpeed));
+  gScheduler.setMessagePixelsPerTick(gPixelStep);
+  syncSchedulerMessagesFromSettings();
+  gRssRuntime.onSettingsChanged(settings);
+  applySchedulerMode();
+}
+
+bool provideRssSegment(String& text, uint8_t& r, uint8_t& g, uint8_t& b) {
+  return gRssRuntime.nextSegment(text, r, g, b);
+}
 
 void printStatus() {
   Serial.print("Brightness=");
@@ -30,21 +102,33 @@ void printStatus() {
   Serial.print(appScrollDelayForSpeed(gScrollSpeed));
   Serial.print(" StepPx=");
   Serial.print(gPixelStep);
+  Serial.print(" WifiMode=");
+  Serial.print(gWifiService.modeString());
+  Serial.print(" IP=");
+  Serial.print(gWifiService.ip());
+  Serial.print(" ConfigMode=");
+  Serial.print(gConfigMode ? "on" : "off");
+  Serial.print(" RSSSources=");
+  Serial.print(gRssRuntime.sourceCount());
+  Serial.print(" RSSCache=");
+  Serial.print(gRssRuntime.hasCachedContent() ? "ready" : "empty");
   Serial.print(" Mode=");
   switch (gScheduler.mode()) {
     case ContentMode::Messages:
-      Serial.println("messages");
+      Serial.print("messages");
       break;
     case ContentMode::ConfigPrompt:
-      Serial.println("config");
+      Serial.print("config");
       break;
     case ContentMode::RssPlayback:
-      Serial.println("rss-placeholder");
+      Serial.print("rss");
       break;
     case ContentMode::Fallback:
-      Serial.println("fallback");
+    default:
+      Serial.print("fallback");
       break;
   }
+  Serial.println();
 }
 
 void printSerialHelp() {
@@ -53,14 +137,23 @@ void printSerialHelp() {
   Serial.println("  f=speed faster, s=speed slower");
   Serial.println("  1..9=set speed 1..9, 0=set speed 10");
   Serial.println("  p=toggle pixel step (1/2/3)");
-  Serial.println("  speed 10 uses 0 ms delay");
-  Serial.println("  m=messages, c=config text, r=rss placeholder, x=fallback");
+  Serial.println("  c=enter config mode, x=exit config mode");
+  Serial.println("  m=manual messages, r=manual rss, b=manual fallback, a=auto");
   Serial.println("  h=help");
   printStatus();
 }
 
+void saveAndApplySettings() {
+  gSettingsStore.mutableSettings().brightness = gBrightness;
+  gSettingsStore.mutableSettings().speed = gScrollSpeed;
+  gSettingsStore.save();
+  applyRuntimeFromSettings(gSettingsStore.settings());
+}
+
 void applyScrollSpeed() {
   gScheduler.setMessageDelayMs(appScrollDelayForSpeed(gScrollSpeed));
+  gSettingsStore.mutableSettings().speed = gScrollSpeed;
+  gSettingsStore.save();
   Serial.print("Speed now ");
   Serial.print(gScrollSpeed);
   Serial.print(" (delay ");
@@ -74,28 +167,62 @@ void applyPixelStep() {
   Serial.println(gPixelStep);
 }
 
+void enterConfigMode() {
+  if (gConfigMode) return;
+  gConfigMode = true;
+  gWifiService.enterConfigMode(gSettingsStore.settings());
+  if (!gWebService.isRunning()) {
+    gWebService.begin();
+  }
+  gRssRuntime.setSuspended(true);
+  applySchedulerMode();
+  Serial.println("Entered config mode");
+  printStatus();
+}
+
+void exitConfigMode() {
+  if (!gConfigMode) return;
+  gConfigMode = false;
+  gWebService.stop();
+  gWifiService.exitConfigMode(true);
+  gRssRuntime.setSuspended(false);
+  gRssRuntime.forceRefreshSoon();
+  applySchedulerMode();
+  Serial.println("Exited config mode");
+  printStatus();
+}
+
+void onSettingsChanged(const AppSettings& settings) {
+  applyRuntimeFromSettings(settings);
+}
+
+void onWifiConnectRequested() { gWifiService.enterConfigMode(gSettingsStore.settings()); }
+
+void onFactoryResetRequested() {
+  gSettingsStore.factoryReset();
+  ESP.restart();
+}
+
 void handleSerialInput() {
   while (Serial.available() > 0) {
     const char c = static_cast<char>(Serial.read());
     if (c == 'u') {
       gBrightness = static_cast<uint8_t>(min(255, gBrightness + 8));
       gDisplay.setBrightness(gBrightness);
+      saveAndApplySettings();
       Serial.print("Brightness: ");
       Serial.println(gBrightness);
     } else if (c == 'd') {
       gBrightness = static_cast<uint8_t>(max(0, gBrightness - 8));
       gDisplay.setBrightness(gBrightness);
+      saveAndApplySettings();
       Serial.print("Brightness: ");
       Serial.println(gBrightness);
     } else if (c == 'f') {
-      if (gScrollSpeed < APP_SCROLL_SPEED_MAX) {
-        gScrollSpeed++;
-      }
+      if (gScrollSpeed < APP_SCROLL_SPEED_MAX) gScrollSpeed++;
       applyScrollSpeed();
     } else if (c == 's') {
-      if (gScrollSpeed > APP_SCROLL_SPEED_MIN) {
-        gScrollSpeed--;
-      }
+      if (gScrollSpeed > APP_SCROLL_SPEED_MIN) gScrollSpeed--;
       applyScrollSpeed();
     } else if (c >= '1' && c <= '9') {
       gScrollSpeed = static_cast<uint8_t>(c - '0');
@@ -109,20 +236,52 @@ void handleSerialInput() {
         gPixelStep = APP_SCROLL_PIXEL_STEP_MIN;
       }
       applyPixelStep();
-    } else if (c == 'm') {
-      gScheduler.setMode(ContentMode::Messages);
-      printStatus();
     } else if (c == 'c') {
-      gScheduler.setMode(ContentMode::ConfigPrompt);
+      enterConfigMode();
+    } else if (c == 'x') {
+      exitConfigMode();
+    } else if (c == 'm') {
+      gManualModeOverride = true;
+      gManualMode = ContentMode::Messages;
+      applySchedulerMode();
       printStatus();
     } else if (c == 'r') {
-      gScheduler.setMode(ContentMode::RssPlayback);
+      gManualModeOverride = true;
+      gManualMode = ContentMode::RssPlayback;
+      applySchedulerMode();
       printStatus();
-    } else if (c == 'x') {
-      gScheduler.setMode(ContentMode::Fallback);
+    } else if (c == 'b') {
+      gManualModeOverride = true;
+      gManualMode = ContentMode::Fallback;
+      applySchedulerMode();
+      printStatus();
+    } else if (c == 'a') {
+      gManualModeOverride = false;
+      applySchedulerMode();
       printStatus();
     } else if (c == 'h') {
       printSerialHelp();
+    }
+  }
+}
+
+void handleConfigButton() {
+  const bool buttonState = digitalRead(kConfigButtonPin);
+  const uint32_t now = millis();
+
+  if (buttonState != gLastButtonState) {
+    if ((now - gLastButtonChangeMs) > kButtonDebounceMs) {
+      gLastButtonChangeMs = now;
+      gLastButtonState = buttonState;
+
+      // BOOT is active-low
+      if (!buttonState) {
+        if (gConfigMode) {
+          exitConfigMode();
+        } else {
+          enterConfigMode();
+        }
+      }
     }
   }
 }
@@ -132,7 +291,17 @@ void setup() {
   delay(300);
   Serial.println();
   Serial.println("ManCaveScrollerArduinoIDE");
-  Serial.println("Phase 4 scheduler + runtime speed/brightness controls");
+  Serial.println("RSS/cache runtime integration build");
+
+  pinMode(kConfigButtonPin, INPUT_PULLUP);
+  gLastButtonState = digitalRead(kConfigButtonPin);
+
+  if (!gSettingsStore.begin()) {
+    Serial.println("Settings/LittleFS init failed");
+    while (true) {
+      delay(1000);
+    }
+  }
 
   if (!gDisplay.begin()) {
     Serial.println("Display init failed");
@@ -141,20 +310,56 @@ void setup() {
     }
   }
 
-  gDisplay.setBrightness(gBrightness);
-  gScheduler.setConfigPromptText("Config mode placeholder");
-  gScheduler.setRssPlaceholder("RSS placeholder title", "RSS placeholder description");
+  gWebService.setOnSettingsChanged(onSettingsChanged);
+  gWebService.setOnWifiConnectRequested(onWifiConnectRequested);
+  gWebService.setOnFactoryResetRequested(onFactoryResetRequested);
+  gWebService.setRssRuntime(&gRssRuntime);
+
+  gWifiService.begin();
+  if (!gRssRuntime.begin()) {
+    Serial.println("RSS runtime init failed");
+  }
+
+  applyRuntimeFromSettings(gSettingsStore.settings());
+  gScheduler.setConfigPromptText("Config mode active");
+  gScheduler.setRssPlaceholder("Loading RSS feed cache", "Using message fallback");
+  gScheduler.setRssSegmentProvider(provideRssSegment);
   gScheduler.setFallbackText("RSS unavailable fallback");
-  gScheduler.begin(gMessages, kMessageCount,
-                   appScrollDelayForSpeed(gScrollSpeed),
-                   gPixelStep);
+  gScheduler.begin(gScheduledMessages, APP_MAX_MESSAGES,
+                   appScrollDelayForSpeed(gScrollSpeed), gPixelStep);
+  gScheduler.setMode(ContentMode::Fallback);
+
+  // Boot flow: if no credentials or STA fails, stay in AP/config mode.
+  if (!gWifiService.startForSettings(gSettingsStore.settings()) &&
+      gWifiService.mode() == WifiRuntimeMode::AP) {
+    gConfigMode = true;
+    gWebService.begin();
+    gRssRuntime.setSuspended(true);
+    applySchedulerMode();
+  } else {
+    // Normal scrolling mode with WiFi off to reduce display artifacts.
+    gWifiService.stopWifi();
+    gRssRuntime.setSuspended(false);
+    gRssRuntime.forceRefreshSoon();
+    applySchedulerMode();
+  }
+
   printSerialHelp();
 }
 
 void loop() {
   handleSerialInput();
+  handleConfigButton();
+
+  gRssRuntime.setSuspended(gConfigMode);
+  gRssRuntime.tick();
+  gWifiService.tick();
+  gWebService.tick();
   gScroller.tick();
   gScheduler.tick();
+  if (!gConfigMode && !gManualModeOverride) {
+    applySchedulerMode();
+  }
 
   delay(1);
 }

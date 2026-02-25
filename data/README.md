@@ -9,5 +9,9 @@ Planned content:
 - `config/default_messages.json`
 - optional font or cache seed assets
 
+Current content:
+- `/web/index.html`: full setup UI (messages, appearance, WiFi, advanced/RSS, factory reset)
+- `/config/default_messages.json`: startup defaults for 5 message slots
+
 Documentation note:
 - Refreshed with current runtime defaults: scroll delay boots at `0 ms`, pixel step boots at `1`.

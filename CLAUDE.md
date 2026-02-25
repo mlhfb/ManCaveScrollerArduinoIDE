@@ -38,14 +38,17 @@ Do not port spaghetti patterns, broad globals, or pointer-unsafe code from legac
   - Stable source order, explicit retry intervals, reproducible fallback rules.
 
 ## Proposed Module Layout
-- `include/AppTypes.h` / `src/AppTypes.cpp` (shared models/enums)
+- `include/AppTypes.h` (shared models/enums)
 - `include/DisplayPanel.h` / `src/DisplayPanel.cpp`
 - `include/Scroller.h` / `src/Scroller.cpp`
 - `include/SettingsStore.h` / `src/SettingsStore.cpp`
 - `include/WifiService.h` / `src/WifiService.cpp`
 - `include/WebService.h` / `src/WebService.cpp`
+- `include/RssSources.h` / `src/RssSources.cpp` (materialized source manifest from settings)
+- `include/RssSanitizer.h` / `src/RssSanitizer.cpp` (CDATA/tag/entity/UTF-8 cleanup)
 - `include/RssFetcher.h` / `src/RssFetcher.cpp`
 - `include/RssCache.h` / `src/RssCache.cpp`
+- `include/RssRuntime.h` / `src/RssRuntime.cpp` (refresh scheduling + cache-backed playback)
 - `include/ContentScheduler.h` / `src/ContentScheduler.cpp`
 - `src/main.cpp` as orchestration only
 
@@ -71,6 +74,7 @@ Implement and maintain:
 - Behavioral baseline comes from `rssArduinoPlatform` legacy `scrollMe()` path (`src/main.cpp` in committed history), not the uncommitted refactor copy.
 - Cycle-complete callback/flag so scheduler switches content without tearing.
 - Keep WiFi radio off during normal STA scrolling when possible to reduce artifacts.
+- Allow periodic RSS refresh cycles to temporarily re-enable STA as required, then return radio-off scrolling mode.
 
 ## Data/Persistence Requirements
 - Versioned settings schema with sane defaults.
@@ -84,3 +88,11 @@ Implement and maintain:
 - Device reboots with settings intact.
 - RSS outages fall back to cached data or custom messages automatically.
 - Smooth scrolling remains stable during long runtime.
+
+## Current Implementation Notes (2026-02-25)
+- RSS runtime now supports:
+  - periodic refresh interval (`15 min`) and retry (`60 sec`)
+  - per-source LittleFS cache files with metadata
+  - random no-repeat playback pool across enabled cached sources
+  - `LIVE` flag inference hook for future source prioritization
+- `/api/status` includes `rss_source_count` and `rss_sources[]` cache metadata.

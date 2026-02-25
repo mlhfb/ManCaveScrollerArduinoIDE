@@ -1,12 +1,492 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>ManCaveScroller Setup</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 18px;
+      background: #111827;
+      color: #e5e7eb;
+    }
+    h1 {
+      text-align: center;
+      color: #f97316;
+      margin-bottom: 14px;
+      font-size: 1.6rem;
+    }
+    .card {
+      background: #1f2937;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .card h2 {
+      color: #22d3ee;
+      margin-bottom: 10px;
+      font-size: 1rem;
+    }
+    label {
+      display: block;
+      font-size: 0.85rem;
+      color: #cbd5e1;
+      margin-bottom: 4px;
+      margin-top: 8px;
+    }
+    input[type=text], input[type=password], select {
+      width: 100%;
+      padding: 9px;
+      border-radius: 7px;
+      border: 1px solid #475569;
+      background: #0f172a;
+      color: #f8fafc;
+      margin-bottom: 8px;
+    }
+    input[type=range] { width: 100%; }
+    input[type=color] {
+      width: 44px;
+      height: 34px;
+      border: 0;
+      background: none;
+      padding: 0;
+    }
+    .btn {
+      width: 100%;
+      border: 0;
+      border-radius: 7px;
+      background: #f97316;
+      color: #1f2937;
+      font-weight: bold;
+      padding: 9px;
+      margin-top: 8px;
+      cursor: pointer;
+    }
+    .btn-alt { background: #64748b; color: #f8fafc; }
+    .btn-warn { background: #ef4444; color: #fff; }
+    .status {
+      font-size: 0.86rem;
+      text-align: center;
+      margin-bottom: 12px;
+      padding: 8px;
+      border: 1px solid #334155;
+      border-radius: 7px;
+      background: #0f172a;
+      min-height: 38px;
+      white-space: pre-wrap;
+    }
+    .status.ok { color: #22d3ee; }
+    .status.err { color: #f87171; }
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 7px;
+      padding: 8px;
+    }
+    .row input[type=text] { margin-bottom: 0; flex: 1; }
+    .row input[type=checkbox] { width: 18px; height: 18px; }
+    .msg-num {
+      width: 18px;
+      color: #22d3ee;
+      font-weight: bold;
+      font-size: 0.86rem;
+      text-align: center;
+    }
+    .hidden { display: none; }
+    .sub {
+      margin-top: 6px;
+      margin-left: 16px;
+      border-left: 2px solid #334155;
+      padding-left: 10px;
+    }
+    .sport-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 6px;
+      margin-top: 8px;
+      margin-bottom: 4px;
+    }
+    .sport-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      color: #cbd5e1;
+    }
+    .preview {
+      font-size: 0.86rem;
+      line-height: 1.4;
+      min-height: 20px;
+    }
+    .cache-line {
+      font-size: 0.78rem;
+      color: #cbd5e1;
+      margin-bottom: 5px;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 6px;
+      background: #0f172a;
+    }
+    #speedVal, #brightVal {
+      font-weight: bold;
+      color: #22d3ee;
+      font-size: 0.9rem;
+    }
+  </style>
 </head>
 <body>
   <h1>ManCaveScroller</h1>
-  <p>Phase 1 placeholder page. Web UI implementation starts in later phases.</p>
+  <div id="status" class="status">Loading...</div>
+
+  <div id="mainView">
+    <div class="card">
+      <h2>Messages</h2>
+      <div id="messagePreview" class="preview"></div>
+      <button class="btn" onclick="showMessages()">Edit Messages</button>
+    </div>
+
+    <div class="card">
+      <h2>Appearance</h2>
+      <label>Speed (1..10)</label>
+      <input id="speed" type="range" min="1" max="10" value="10"
+             oninput="g('speedVal').textContent=this.value">
+      <div id="speedVal">10</div>
+      <label>Brightness (0..255)</label>
+      <input id="brightness" type="range" min="0" max="255" value="72"
+             oninput="g('brightVal').textContent=this.value">
+      <div id="brightVal">72</div>
+      <button class="btn" onclick="saveAppearance()">Save Appearance</button>
+    </div>
+
+    <div class="card">
+      <h2>WiFi</h2>
+      <label for="ssid">SSID</label>
+      <input id="ssid" type="text" placeholder="WiFi network name">
+      <label for="password">Password</label>
+      <input id="password" type="password" placeholder="WiFi password">
+      <button class="btn" onclick="saveWifi()">Connect</button>
+      <button class="btn btn-alt" onclick="showAdvanced()">Advanced</button>
+    </div>
+  </div>
+
+  <div id="messagesView" class="hidden">
+    <div class="card">
+      <h2>Edit Messages</h2>
+      <div id="messageEditor"></div>
+      <button class="btn" onclick="saveMessages()">Save Messages</button>
+      <button class="btn btn-alt" onclick="showMain()">Back</button>
+    </div>
+  </div>
+
+  <div id="advancedView" class="hidden">
+    <div class="card">
+      <h2>Advanced</h2>
+
+      <label for="panelCols">Panel Columns</label>
+      <select id="panelCols">
+        <option value="32">32</option>
+        <option value="64">64</option>
+        <option value="96">96</option>
+        <option value="128">128</option>
+      </select>
+      <button class="btn" onclick="saveAdvanced()">Save Panel Size</button>
+
+      <label><input id="rssEnabled" type="checkbox"> Enable RSS</label>
+      <label><input id="nprEnabled" type="checkbox"> Enable NPR source</label>
+      <label for="rssUrl">NPR URL</label>
+      <input id="rssUrl" type="text" placeholder="https://feeds.npr.org/1001/rss.xml">
+
+      <label><input id="sportsEnabled" type="checkbox"> Enable Sports source(s)</label>
+      <div class="sub">
+        <label for="sportsBaseUrl">Sports base URL/path</label>
+        <input id="sportsBaseUrl" type="text"
+               placeholder="example.com/path or example.com/custom.php">
+        <div class="sport-grid">
+          <label class="sport-item"><input id="sportMlb" type="checkbox"> MLB</label>
+          <label class="sport-item"><input id="sportNhl" type="checkbox"> NHL</label>
+          <label class="sport-item"><input id="sportNcaaf" type="checkbox"> NCAAF</label>
+          <label class="sport-item"><input id="sportNfl" type="checkbox"> NFL</label>
+          <label class="sport-item"><input id="sportNba" type="checkbox"> NBA</label>
+          <label class="sport-item"><input id="sportBig10" type="checkbox"> BIG10</label>
+        </div>
+      </div>
+      <button class="btn" onclick="saveRss()">Save RSS Settings</button>
+
+      <label>RSS Cache Status</label>
+      <div id="rssCacheStatus"></div>
+
+      <button class="btn btn-warn" onclick="factoryReset()">Factory Reset</button>
+      <button class="btn btn-alt" onclick="showMain()">Back</button>
+    </div>
+  </div>
+
+  <script>
+    let messages = [];
+
+    function g(id) { return document.getElementById(id); }
+
+    function setStatus(message, ok) {
+      const el = g("status");
+      el.textContent = message;
+      el.className = ok === false ? "status err" : "status ok";
+    }
+
+    async function callApi(path, method, body) {
+      const options = { method, headers: { "Content-Type": "application/json" } };
+      if (body !== undefined) {
+        options.body = JSON.stringify(body);
+      }
+      const response = await fetch(path, options);
+      const text = await response.text();
+      let payload;
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        payload = { raw: text };
+      }
+      if (!response.ok) {
+        throw new Error(payload.error || payload.raw || ("HTTP " + response.status));
+      }
+      return payload;
+    }
+
+    function rgbToHex(r, g, b) {
+      return "#" + [r, g, b].map(v => ("0" + Number(v).toString(16)).slice(-2)).join("");
+    }
+
+    function hexToRgb(hex) {
+      return {
+        r: parseInt(hex.substr(1, 2), 16),
+        g: parseInt(hex.substr(3, 2), 16),
+        b: parseInt(hex.substr(5, 2), 16)
+      };
+    }
+
+    function renderMessagePreview() {
+      let html = "";
+      let shown = 0;
+      for (let i = 0; i < messages.length; i++) {
+        const msg = messages[i];
+        if (!msg.enabled || !msg.text) {
+          continue;
+        }
+        shown++;
+        const sample = msg.text.length > 38 ? msg.text.substring(0, 38) + "..." : msg.text;
+        html += "<div style=\"color:" + rgbToHex(msg.r, msg.g, msg.b) + "\">" +
+                shown + ". " + sample.replace(/</g, "&lt;") + "</div>";
+      }
+      g("messagePreview").innerHTML = shown ? html : "<div style=\"color:#94a3b8\">No enabled messages</div>";
+    }
+
+    function renderMessageEditor() {
+      let html = "";
+      for (let i = 0; i < messages.length; i++) {
+        const msg = messages[i];
+        html += "<div class=\"row\">";
+        html += "<span class=\"msg-num\">" + (i + 1) + "</span>";
+        html += "<input id=\"msgEnabled" + i + "\" type=\"checkbox\"" + (msg.enabled ? " checked" : "") + ">";
+        html += "<input id=\"msgText" + i + "\" type=\"text\" maxlength=\"200\" value=\"" +
+                (msg.text || "").replace(/"/g, "&quot;") + "\">";
+        html += "<input id=\"msgColor" + i + "\" type=\"color\" value=\"" +
+                rgbToHex(msg.r, msg.g, msg.b) + "\">";
+        html += "</div>";
+      }
+      g("messageEditor").innerHTML = html;
+    }
+
+    function renderRssCacheStatus(status) {
+      const sources = Array.isArray(status.rss_sources) ? status.rss_sources : [];
+      if (!sources.length) {
+        g("rssCacheStatus").innerHTML = "<div class=\"cache-line\">No active RSS sources</div>";
+        return;
+      }
+
+      let html = "";
+      for (const src of sources) {
+        const stamp = src.cache_updated_epoch ? src.cache_updated_epoch : 0;
+        const d = stamp ? new Date(stamp * 1000).toLocaleString() : "n/a";
+        html += "<div class=\"cache-line\">" +
+          "<b>" + (src.name || "source") + "</b><br>" +
+          "cache_valid=" + (!!src.cache_valid) + ", items=" + (src.cache_item_count || 0) + ", updated=" + d +
+          "</div>";
+      }
+      g("rssCacheStatus").innerHTML = html;
+    }
+
+    function showMessages() {
+      renderMessageEditor();
+      g("mainView").className = "hidden";
+      g("messagesView").className = "";
+      g("advancedView").className = "hidden";
+    }
+
+    function showAdvanced() {
+      g("mainView").className = "hidden";
+      g("messagesView").className = "hidden";
+      g("advancedView").className = "";
+    }
+
+    function showMain() {
+      g("mainView").className = "";
+      g("messagesView").className = "hidden";
+      g("advancedView").className = "hidden";
+      renderMessagePreview();
+    }
+
+    async function saveMessages() {
+      for (let i = 0; i < messages.length; i++) {
+        messages[i].enabled = g("msgEnabled" + i).checked;
+        messages[i].text = g("msgText" + i).value;
+        const c = hexToRgb(g("msgColor" + i).value);
+        messages[i].r = c.r;
+        messages[i].g = c.g;
+        messages[i].b = c.b;
+      }
+
+      try {
+        const result = await callApi("/api/messages", "POST", { messages });
+        setStatus(result.status || "Messages updated", true);
+        showMain();
+      } catch (err) {
+        setStatus("Save messages failed: " + err.message, false);
+      }
+    }
+
+    async function saveAppearance() {
+      try {
+        const payload = {
+          speed: Number(g("speed").value),
+          brightness: Number(g("brightness").value)
+        };
+        const result = await callApi("/api/appearance", "POST", payload);
+        setStatus(result.status || "Appearance updated", true);
+      } catch (err) {
+        setStatus("Save appearance failed: " + err.message, false);
+      }
+    }
+
+    async function saveWifi() {
+      try {
+        const payload = {
+          ssid: g("ssid").value,
+          password: g("password").value
+        };
+        const result = await callApi("/api/wifi", "POST", payload);
+        setStatus(result.status || "WiFi update sent", true);
+      } catch (err) {
+        setStatus("WiFi update failed: " + err.message, false);
+      }
+    }
+
+    async function saveAdvanced() {
+      try {
+        const result = await callApi("/api/advanced", "POST", {
+          panel_cols: Number(g("panelCols").value)
+        });
+        setStatus(result.status || "Advanced settings updated", true);
+      } catch (err) {
+        setStatus("Save advanced failed: " + err.message, false);
+      }
+    }
+
+    async function saveRss() {
+      const sports = {
+        mlb: g("sportMlb").checked,
+        nhl: g("sportNhl").checked,
+        ncaaf: g("sportNcaaf").checked,
+        nfl: g("sportNfl").checked,
+        nba: g("sportNba").checked,
+        big10: g("sportBig10").checked
+      };
+      const anySport = sports.mlb || sports.nhl || sports.ncaaf ||
+                       sports.nfl || sports.nba || sports.big10;
+
+      if (g("rssEnabled").checked && g("sportsEnabled").checked && !g("sportsBaseUrl").value.trim()) {
+        setStatus("Sports enabled but sports base URL is empty", false);
+        return;
+      }
+      if (g("rssEnabled").checked && g("sportsEnabled").checked && !anySport) {
+        setStatus("Enable at least one sport", false);
+        return;
+      }
+
+      try {
+        const payload = {
+          enabled: g("rssEnabled").checked,
+          npr_enabled: g("nprEnabled").checked,
+          url: g("rssUrl").value.trim(),
+          sports_enabled: g("sportsEnabled").checked,
+          sports_base_url: g("sportsBaseUrl").value.trim(),
+          sports
+        };
+        const result = await callApi("/api/rss", "POST", payload);
+        setStatus(result.status || "RSS settings updated", true);
+      } catch (err) {
+        setStatus("Save RSS failed: " + err.message, false);
+      }
+    }
+
+    async function factoryReset() {
+      if (!confirm("Factory reset all settings and reboot device?")) {
+        return;
+      }
+      try {
+        await callApi("/api/factory-reset", "POST");
+        setStatus("Factory reset requested", true);
+      } catch (err) {
+        setStatus("Factory reset failed: " + err.message, false);
+      }
+    }
+
+    async function loadStatus() {
+      try {
+        const status = await callApi("/api/status", "GET");
+        messages = Array.isArray(status.messages) ? status.messages : [];
+        while (messages.length < 5) {
+          messages.push({ text: "", r: 255, g: 255, b: 255, enabled: false });
+        }
+
+        g("speed").value = status.speed ?? 10;
+        g("speedVal").textContent = status.speed ?? 10;
+        g("brightness").value = status.brightness ?? 72;
+        g("brightVal").textContent = status.brightness ?? 72;
+        g("ssid").value = status.wifi_ssid ?? "";
+        g("password").value = status.wifi_password ?? "";
+        g("panelCols").value = status.panel_cols ?? 128;
+
+        g("rssEnabled").checked = !!status.rss_enabled;
+        g("nprEnabled").checked = status.rss_npr_enabled !== false;
+        g("rssUrl").value = status.rss_url ?? "";
+        g("sportsEnabled").checked = !!status.rss_sports_enabled;
+        g("sportsBaseUrl").value = status.rss_sports_base_url ?? "";
+
+        const sports = status.rss_sports || {};
+        g("sportMlb").checked = sports.mlb !== false;
+        g("sportNhl").checked = sports.nhl !== false;
+        g("sportNcaaf").checked = sports.ncaaf !== false;
+        g("sportNfl").checked = sports.nfl !== false;
+        g("sportNba").checked = sports.nba !== false;
+        g("sportBig10").checked = sports.big10 !== false;
+
+        renderMessagePreview();
+        renderRssCacheStatus(status);
+        setStatus("WiFi: " + (status.wifi_mode || "Unknown") + " | IP: " + (status.ip || "0.0.0.0"), true);
+      } catch (err) {
+        setStatus("Status load failed: " + err.message, false);
+      }
+    }
+
+    loadStatus();
+    setInterval(loadStatus, 7000);
+  </script>
 </body>
 </html>

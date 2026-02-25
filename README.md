@@ -2,22 +2,44 @@
 
 Repository for a clean Arduino-framework rewrite of ManCaveScroller on ESP32.
 
-Current status: Phase 4 scaffolding is implemented and buildable.
+Current status: Phase 9 implementation baseline is buildable (`pio run`, `pio run -t buildfs`).
 
 ## Current Firmware Status
 - Display pipeline: `FastLED` + `FastLED_NeoMatrix` on ESP32 Arduino.
 - Font: Adafruit GFX built-in 5x7 (matching legacy `rssArduinoPlatform` look).
 - Scroller behavior baseline: legacy `scrollMe()` style horizontal scroll bounds.
 - Message playback: rotating multi-message playlist with per-message RGB colors.
-- Scheduler: cooperative `ContentScheduler` with runtime modes:
-  - `messages`
-  - `config` placeholder
-  - `rss` placeholder (title/description alternation)
-  - `fallback`
+- Scheduler: cooperative `ContentScheduler` with runtime modes (`messages`, `config`, `rss`, `fallback`) and cycle-complete handoff.
+- Persistent settings: versioned JSON settings in LittleFS (`/config/settings.json`) with defaults and schema version.
+- WiFi + config mode:
+  - AP bootstrap when no saved STA credentials
+  - STA connection flow with timeout/retry
+  - BOOT button toggle for config mode
+  - captive DNS redirect in AP mode
+  - WiFi radio off during normal scrolling mode to reduce artifacts
+- RSS fetch/parsing/sanitization:
+  - HTTPS fetch with retry/backoff and timeout
+  - bounded RSS XML parsing (`title`, `description`)
+  - CDATA removal, HTML tag stripping, entity decode, UTF-8 to display-safe ASCII sanitize
+- RSS cache/resilience:
+  - per-source LittleFS cache files with metadata header
+  - last-good cache retained on feed failures
+  - non-repeating random picker across enabled sources until cycle exhaustion
+  - periodic refresh schedule (15 min) with retry interval (60 sec) on failures
+  - `LIVE` flag inference hook for sports hot-list prioritization
+- Web API: endpoint contract implemented (`/api/status`, messages/text/color, speed/brightness/appearance, wifi, advanced, rss, factory-reset), including `rss_source_count` + `rss_sources[]` cache metadata in status.
+- Web UI served from LittleFS (`/web/index.html`) for full setup:
+  - message editing (5 slots)
+  - appearance sliders
+  - WiFi credentials
+  - advanced panel settings
+  - RSS + sports source configuration
+  - factory reset confirmation
 - Serial test controls:
   - Brightness: `u` (up), `d` (down)
   - Speed (delay only): `f` (faster), `s` (slower), `1..9` and `0` for exact speed 1..10
   - Pixel step: `p` toggles `1 -> 2 -> 3`
+  - Scheduler mode testing: `m`/`r`/`b` manual override, `a` auto mode
   - Help: `h`
 - Scroller defaults on boot:
   - Delay: `0 ms` (speed `10`)
@@ -50,7 +72,7 @@ Create a new version of the scroller that:
 - Config persistence: versioned settings store (LittleFS/NVS-backed strategy)
 
 ## Feature Scope (Target Parity)
-- Smooth scrolling text renderer with fractional speed stepping
+- Smooth scrolling text renderer with legacy-style step bounds and runtime delay control
 - Up to 5 custom messages with per-message color and enable flags
 - Web UI for message, appearance, WiFi, advanced, RSS configuration
 - AP + STA WiFi behavior with captive portal in AP mode
@@ -61,7 +83,7 @@ Create a new version of the scroller that:
 - Cache-backed RSS playback with resilient fallback to custom messages
 - Factory reset endpoint and persistent settings across reboot
 
-## Planned API Surface
+## API Surface (Baseline Implemented)
 - `GET /api/status`
 - `POST /api/messages`
 - `POST /api/text` (legacy)
@@ -74,22 +96,35 @@ Create a new version of the scroller that:
 - `POST /api/rss`
 - `POST /api/factory-reset`
 
-## Planned Architecture
+`GET /api/status` additionally reports:
+- `rss_source_count`
+- `rss_sources[]` with `name`, `url`, `enabled`, `cache_valid`, `cache_item_count`, `cache_updated_epoch`
+
+## Architecture
 - `main.cpp` orchestrator only (state machine driven)
 - Display module (panel mapping, brightness, panel width)
 - Scroller module (legacy-style stepping with runtime `FastLED.delay()` speed profile)
-- Settings module (defaults, load/save, schema handling)
-- WiFi module (AP/STA, radio cycling, captive DNS)
-- Web module (HTTP handlers + JSON validation)
+- Settings module (LittleFS defaults/load/save, schema handling)
+- WiFi module (AP/STA, config-mode radio control, captive DNS)
+- Web module (WebServer handlers + JSON validation)
 - RSS fetcher module (HTTPS + XML extraction + sanitize)
 - RSS cache module (per-source storage + no-repeat picker)
 - Content scheduler module (message/RSS arbitration and refresh timing)
 
 ## Current Modules In Repo
 - `include/AppConfig.h`
+- `include/AppTypes.h`
 - `include/DisplayPanel.h` + `src/DisplayPanel.cpp`
 - `include/Scroller.h` + `src/Scroller.cpp`
 - `include/ContentScheduler.h` + `src/ContentScheduler.cpp`
+- `include/SettingsStore.h` + `src/SettingsStore.cpp`
+- `include/WifiService.h` + `src/WifiService.cpp`
+- `include/WebService.h` + `src/WebService.cpp`
+- `include/RssSources.h` + `src/RssSources.cpp`
+- `include/RssSanitizer.h` + `src/RssSanitizer.cpp`
+- `include/RssFetcher.h` + `src/RssFetcher.cpp`
+- `include/RssCache.h` + `src/RssCache.cpp`
+- `include/RssRuntime.h` + `src/RssRuntime.cpp`
 - `src/main.cpp`
 
 ## Milestones
@@ -97,8 +132,8 @@ Create a new version of the scroller that:
 2. Display + scroller core
 3. Runtime speed/brightness controls + message rotation
 4. Scheduler scaffolding for mode arbitration
-5. Settings + WiFi/config mode
-6. Web API + UI
+5. Settings + WiFi/config mode baseline
+6. Web API + UI baseline
 7. RSS fetch + parse + cache
 8. Integration, validation, and first tagged release candidate
 

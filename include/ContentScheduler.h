@@ -23,11 +23,14 @@ struct ScheduledMessage {
 
 class ContentScheduler {
 public:
+  using RssSegmentProvider = bool (*)(String&, uint8_t&, uint8_t&, uint8_t&);
+
   ContentScheduler(Scroller& scroller, DisplayPanel& panel);
 
   void begin(const ScheduledMessage* messages, size_t messageCount,
              uint16_t messageDelayMs, uint8_t messagePixelsPerTick);
   void tick();
+  void updateMessages(const ScheduledMessage* messages, size_t messageCount);
 
   void setMode(ContentMode mode);
   ContentMode mode() const;
@@ -39,6 +42,7 @@ public:
 
   void setConfigPromptText(const String& text);
   void setRssPlaceholder(const String& title, const String& description);
+  void setRssSegmentProvider(RssSegmentProvider provider);
   void setFallbackText(const String& text);
 
 private:
@@ -60,6 +64,7 @@ private:
   String _rssTitleText;
   String _rssDescriptionText;
   bool _rssShowTitleNext;
+  RssSegmentProvider _rssSegmentProvider;
   String _fallbackText;
 };
 
