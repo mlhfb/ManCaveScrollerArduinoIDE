@@ -7,4 +7,4 @@ Planned initial coverage:
 
 Current status:
 - No automated tests implemented yet.
-- Manual validation currently uses flash + serial control checks for brightness/speed and scheduler mode switching.
+- Manual validation currently uses flash + serial control checks for brightness/speed, pixel-step toggle (`p`), and scheduler mode switching.

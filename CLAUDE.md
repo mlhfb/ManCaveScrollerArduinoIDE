@@ -66,8 +66,8 @@ Implement and maintain:
 ## Display/Smoothness Requirements
 - Use Arduino `loop()` with FastLED-driven render cadence (`FastLED.show()`).
 - Use simple scroll position stepping tuned for smooth visual motion.
-- Runtime speed control should combine delay and pixel-step profiles so speed changes are visually obvious (`speed 10` uses `0 ms` delay).
-- Scroller cadence path uses `FastLED.delay()` for direct speed-profile testing behavior.
+- Runtime speed control uses `FastLED.delay()`; fastest speed (`10`) uses `0 ms` delay by default.
+- Pixel-step changes are controlled independently (test toggle: `1/2/3`).
 - Behavioral baseline comes from `rssArduinoPlatform` legacy `scrollMe()` path (`src/main.cpp` in committed history), not the uncommitted refactor copy.
 - Cycle-complete callback/flag so scheduler switches content without tearing.
 - Keep WiFi radio off during normal STA scrolling when possible to reduce artifacts.

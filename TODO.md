@@ -25,7 +25,7 @@
 - [x] Mirror legacy `scrollMe()` behavior as baseline: start `xw = matrix->width()`, draw at cursor `xw`, decrement each frame, stop at `-(textLen * 6)`, then reset.
 - [x] Implement Arduino/FastLED scroller update loop around that baseline (`setCursor` + `print` + `show`) tuned for smooth motion.
 - [x] Support per-message RGB colors and runtime brightness changes.
-- [x] Add runtime speed control profile with larger visual steps (`speed 10 => 0 ms` delay).
+- [x] Add runtime speed control via `FastLED.delay()` (`speed 10 => 0 ms` delay) and independent pixel-step toggle (`1/2/3`).
 - [x] Add cycle-complete signaling so scheduler can switch items cleanly.
 
 ## 4) Runtime Scheduler

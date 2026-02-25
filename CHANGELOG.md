@@ -31,7 +31,12 @@ All notable changes to this project will be documented in this file.
 - Larger delay profile steps and per-speed pixel-step profile.
 - Fastest speed (`10`) now uses `0 ms` delay.
 - Scroller timing now uses `FastLED.delay()` in tick cadence path.
+- Updated runtime control model:
+- Speed now adjusts only `FastLED.delay()` timing.
+- Pixel step is now independent and toggled with serial command `p` (`1 -> 2 -> 3`).
+- Boot defaults are now `delay=0 ms` and `pixel step=1`.
 
 ### Notes
 - Core firmware scaffolding is implemented through Phase 4 (display, scroller, scheduler placeholders, serial controls).
 - Async web server and rotary encoder dependency pinning is intentionally deferred to later phases due Arduino-core compatibility/package installer issues observed during bootstrap.
+- Documentation set (`*.md`) was refreshed with this push as requested.

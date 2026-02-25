@@ -12,13 +12,14 @@ ContentScheduler gScheduler(gScroller, gDisplay);
 ScheduledMessage gMessages[] = {
     {"Phase 3 test message: scrolling is active", 0, 255, 255, true},
     {"Welcome to ManCaveScroller Arduino rewrite", 255, 195, 0, true},
-    {"Serial: u/d brightness, f/s speed, h help", 0, 255, 0, true},
+    {"Serial: u/d brightness, f/s speed, p step, h help", 0, 255, 0, true},
 };
 
 constexpr size_t kMessageCount = sizeof(gMessages) / sizeof(gMessages[0]);
 
 uint8_t gBrightness = APP_DEFAULT_BRIGHTNESS;
 uint8_t gScrollSpeed = APP_SCROLL_SPEED_DEFAULT;
+uint8_t gPixelStep = APP_SCROLL_PIXEL_STEP_DEFAULT;
 
 void printStatus() {
   Serial.print("Brightness=");
@@ -28,7 +29,7 @@ void printStatus() {
   Serial.print(" DelayMs=");
   Serial.print(appScrollDelayForSpeed(gScrollSpeed));
   Serial.print(" StepPx=");
-  Serial.print(appScrollPixelsForSpeed(gScrollSpeed));
+  Serial.print(gPixelStep);
   Serial.print(" Mode=");
   switch (gScheduler.mode()) {
     case ContentMode::Messages:
@@ -51,6 +52,7 @@ void printSerialHelp() {
   Serial.println("  u=brightness up, d=brightness down");
   Serial.println("  f=speed faster, s=speed slower");
   Serial.println("  1..9=set speed 1..9, 0=set speed 10");
+  Serial.println("  p=toggle pixel step (1/2/3)");
   Serial.println("  speed 10 uses 0 ms delay");
   Serial.println("  m=messages, c=config text, r=rss placeholder, x=fallback");
   Serial.println("  h=help");
@@ -59,14 +61,17 @@ void printSerialHelp() {
 
 void applyScrollSpeed() {
   gScheduler.setMessageDelayMs(appScrollDelayForSpeed(gScrollSpeed));
-  gScheduler.setMessagePixelsPerTick(appScrollPixelsForSpeed(gScrollSpeed));
   Serial.print("Speed now ");
   Serial.print(gScrollSpeed);
   Serial.print(" (delay ");
   Serial.print(appScrollDelayForSpeed(gScrollSpeed));
-  Serial.print(" ms, step ");
-  Serial.print(appScrollPixelsForSpeed(gScrollSpeed));
-  Serial.println(" px)");
+  Serial.println(" ms)");
+}
+
+void applyPixelStep() {
+  gScheduler.setMessagePixelsPerTick(gPixelStep);
+  Serial.print("Pixel step now ");
+  Serial.println(gPixelStep);
 }
 
 void handleSerialInput() {
@@ -98,6 +103,12 @@ void handleSerialInput() {
     } else if (c == '0') {
       gScrollSpeed = 10;
       applyScrollSpeed();
+    } else if (c == 'p') {
+      gPixelStep++;
+      if (gPixelStep > APP_SCROLL_PIXEL_STEP_MAX) {
+        gPixelStep = APP_SCROLL_PIXEL_STEP_MIN;
+      }
+      applyPixelStep();
     } else if (c == 'm') {
       gScheduler.setMode(ContentMode::Messages);
       printStatus();
@@ -136,7 +147,7 @@ void setup() {
   gScheduler.setFallbackText("RSS unavailable fallback");
   gScheduler.begin(gMessages, kMessageCount,
                    appScrollDelayForSpeed(gScrollSpeed),
-                   appScrollPixelsForSpeed(gScrollSpeed));
+                   gPixelStep);
   printSerialHelp();
 }
 

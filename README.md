@@ -16,12 +16,13 @@ Current status: Phase 4 scaffolding is implemented and buildable.
   - `fallback`
 - Serial test controls:
   - Brightness: `u` (up), `d` (down)
-  - Speed: `f` (faster), `s` (slower), `1..9` and `0` for exact speed 1..10
+  - Speed (delay only): `f` (faster), `s` (slower), `1..9` and `0` for exact speed 1..10
+  - Pixel step: `p` toggles `1 -> 2 -> 3`
   - Help: `h`
-- Speed profile now uses large visual deltas:
-  - Delay + pixel-step per tick mapping
-  - Fastest speed (`10`) uses `0 ms` delay
-  - Scroller timing path uses `FastLED.delay()`
+- Scroller defaults on boot:
+  - Delay: `0 ms` (speed `10`)
+  - Pixel step: `1`
+- Scroller timing path uses `FastLED.delay()`
 
 ## Objective
 Create a new version of the scroller that:
@@ -76,7 +77,7 @@ Create a new version of the scroller that:
 ## Planned Architecture
 - `main.cpp` orchestrator only (state machine driven)
 - Display module (panel mapping, brightness, panel width)
-- Scroller module (legacy-style stepping with runtime delay/pixel-step profile)
+- Scroller module (legacy-style stepping with runtime `FastLED.delay()` speed profile)
 - Settings module (defaults, load/save, schema handling)
 - WiFi module (AP/STA, radio cycling, captive DNS)
 - Web module (HTTP handlers + JSON validation)
