@@ -30,7 +30,8 @@ RssRuntime::RssRuntime(SettingsStore& settingsStore, WifiService& wifiService)
       _haveCurrentItem(false),
       _showTitleNext(true),
       _currentSourceIndex(0),
-      _currentItem{} {}
+      _currentItem{},
+      _fetchItems{} {}
 
 bool RssRuntime::begin() {
   if (!_cache.begin()) {
@@ -142,17 +143,16 @@ bool RssRuntime::refreshCache() {
   }
 
   bool fetchedAny = false;
-  RssItem fetchedItems[APP_MAX_RSS_ITEMS];
 
   for (size_t i = 0; i < _sourceCount; i++) {
     const RssFetchResult result =
-        _fetcher.fetch(_sources[i].url, fetchedItems, APP_MAX_RSS_ITEMS, 3, 10000,
+        _fetcher.fetch(_sources[i].url, _fetchItems, APP_MAX_RSS_ITEMS, 3, 10000,
                        750);
     if (!result.success || result.itemCount == 0) {
       continue;
     }
 
-    if (_cache.store(_sources[i].url, _sources[i].name, fetchedItems,
+    if (_cache.store(_sources[i].url, _sources[i].name, _fetchItems,
                      result.itemCount)) {
       fetchedAny = true;
     }

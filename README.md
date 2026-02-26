@@ -46,6 +46,7 @@ Current status: Phase 9 implementation baseline is buildable (`pio run`, `pio ru
   - Pixel step: `1`
 - Scroller timing path uses `FastLED.delay()`
 - LittleFS mount path explicitly uses partition label `littlefs` to match `partitions.csv`.
+- RSS refresh path is stack-safe on Arduino `loopTask` (fetch buffer is persistent, not local-stack allocated).
 
 ## Objective
 Create a new version of the scroller that:

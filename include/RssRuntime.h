@@ -57,6 +57,7 @@ private:
   bool _showTitleNext;
   size_t _currentSourceIndex;
   RssItem _currentItem;
+  RssItem _fetchItems[APP_MAX_RSS_ITEMS];
 };
 
 #endif

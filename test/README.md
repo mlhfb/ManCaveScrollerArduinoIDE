@@ -13,3 +13,4 @@ Current status:
 - flash + serial control checks for brightness/speed, pixel-step toggle (`p`), and scheduler mode switching (`m`/`r`/`b`/`a`)
 - AP/config mode and web API/UI smoke checks
 - Mount regression check: confirm boot no longer reports missing `"spiffs"` partition after LittleFS label fix.
+- Stability regression check: exit config mode and verify no `loopTask` stack overflow during RSS refresh.

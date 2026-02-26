@@ -34,6 +34,7 @@ Do not port spaghetti patterns, broad globals, or pointer-unsafe code from legac
   - Display driver, scroller, settings, WiFi, web API, RSS fetcher, RSS cache, scheduler.
 - Memory safety first:
   - Bounded buffers, explicit truncation, no unchecked `String` growth in hot paths.
+  - Avoid large temporary stack allocations inside `loop()` path; prefer static/member buffers for RSS payload/item staging.
 - Deterministic behavior:
   - Stable source order, explicit retry intervals, reproducible fallback rules.
 

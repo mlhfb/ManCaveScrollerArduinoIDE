@@ -336,6 +336,9 @@ bool RssCache::readHeader(const char* sourceUrl, CacheHeader& outHeader) const {
 
   char path[64] = {0};
   buildCachePath(sourceUrl, path, sizeof(path));
+  if (!LittleFS.exists(path)) {
+    return false;
+  }
 
   File file = LittleFS.open(path, "r");
   if (!file) {
@@ -364,6 +367,9 @@ bool RssCache::readRecord(const char* sourceUrl, uint32_t itemIndex,
 
   char path[64] = {0};
   buildCachePath(sourceUrl, path, sizeof(path));
+  if (!LittleFS.exists(path)) {
+    return false;
+  }
   File file = LittleFS.open(path, "r");
   if (!file) {
     return false;

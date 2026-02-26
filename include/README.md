@@ -21,3 +21,6 @@ Runtime defaults are defined in `AppConfig.h`:
 
 LittleFS note:
 - Settings mount call uses explicit partition label `littlefs`.
+
+Runtime safety note:
+- RSS runtime owns a persistent fetch item buffer (`APP_MAX_RSS_ITEMS`) to avoid loop stack overflow.
