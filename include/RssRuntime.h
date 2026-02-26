@@ -21,6 +21,7 @@ public:
 
   bool hasEnabledSources() const;
   bool hasCachedContent() const;
+  bool cacheReady() const;
 
   bool nextSegment(String& outText, uint8_t& outR, uint8_t& outG,
                    uint8_t& outB);

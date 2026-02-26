@@ -75,7 +75,9 @@ Implement and maintain:
 - Behavioral baseline comes from `rssArduinoPlatform` legacy `scrollMe()` path (`src/main.cpp` in committed history), not the uncommitted refactor copy.
 - Cycle-complete callback/flag so scheduler switches content without tearing.
 - Keep WiFi radio off during normal STA scrolling when possible to reduce artifacts.
-- Allow periodic RSS refresh cycles to temporarily re-enable STA as required, then return radio-off scrolling mode.
+- Scroll-priority runtime policy:
+  - outside config mode, prioritize scrolling and suspend WiFi/web/RSS refresh tasks
+  - inside config mode, keep scrolling active while WiFi/web are enabled for setup changes
 
 ## Data/Persistence Requirements
 - Versioned settings schema with sane defaults.

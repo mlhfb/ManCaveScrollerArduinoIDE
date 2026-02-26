@@ -17,6 +17,8 @@ Current status: Phase 9 implementation baseline is buildable (`pio run`, `pio ru
   - BOOT button toggle for config mode
   - captive DNS redirect in AP mode
   - WiFi radio off during normal scrolling mode to reduce artifacts
+  - Outside config mode, runtime suspends WiFi/web/RSS refresh tasks and prioritizes scroll output
+  - In config mode, scrolling remains active while WiFi/web/API run simultaneously
 - RSS fetch/parsing/sanitization:
   - HTTPS fetch with retry/backoff and timeout
   - bounded RSS XML parsing (`title`, `description`)
@@ -25,7 +27,7 @@ Current status: Phase 9 implementation baseline is buildable (`pio run`, `pio ru
   - per-source LittleFS cache files with metadata header
   - last-good cache retained on feed failures
   - non-repeating random picker across enabled sources until cycle exhaustion
-  - periodic refresh schedule (15 min) with retry interval (60 sec) on failures
+  - periodic refresh schedule (15 min) with retry interval (60 sec) on failures (config mode runtime)
   - `LIVE` flag inference hook for sports hot-list prioritization
 - Web API: endpoint contract implemented (`/api/status`, messages/text/color, speed/brightness/appearance, wifi, advanced, rss, factory-reset), including `rss_source_count` + `rss_sources[]` cache metadata in status.
 - Web UI served from LittleFS (`/web/index.html`) for full setup:

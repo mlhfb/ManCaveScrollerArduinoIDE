@@ -24,3 +24,4 @@ LittleFS note:
 
 Runtime safety note:
 - RSS runtime owns a persistent fetch item buffer (`APP_MAX_RSS_ITEMS`) to avoid loop stack overflow.
+- Main loop uses a scroll-priority fast path outside config mode (WiFi/web/RSS refresh suspended).

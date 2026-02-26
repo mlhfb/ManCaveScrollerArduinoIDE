@@ -50,7 +50,7 @@ void syncSchedulerMessagesFromSettings() {
 bool shouldUseRssPlayback() {
   const AppSettings& settings = gSettingsStore.settings();
   return settings.rssEnabled && gRssRuntime.hasEnabledSources() &&
-         gRssRuntime.hasCachedContent();
+         gRssRuntime.cacheReady();
 }
 
 void applySchedulerMode() {
@@ -174,7 +174,8 @@ void enterConfigMode() {
   if (!gWebService.isRunning()) {
     gWebService.begin();
   }
-  gRssRuntime.setSuspended(true);
+  gRssRuntime.setSuspended(false);
+  gRssRuntime.forceRefreshSoon();
   applySchedulerMode();
   Serial.println("Entered config mode");
   printStatus();
@@ -185,8 +186,7 @@ void exitConfigMode() {
   gConfigMode = false;
   gWebService.stop();
   gWifiService.exitConfigMode(true);
-  gRssRuntime.setSuspended(false);
-  gRssRuntime.forceRefreshSoon();
+  gRssRuntime.setSuspended(true);
   applySchedulerMode();
   Serial.println("Exited config mode");
   printStatus();
@@ -329,18 +329,19 @@ void setup() {
                    appScrollDelayForSpeed(gScrollSpeed), gPixelStep);
   gScheduler.setMode(ContentMode::Fallback);
 
-  // Boot flow: if no credentials or STA fails, stay in AP/config mode.
-  if (!gWifiService.startForSettings(gSettingsStore.settings()) &&
-      gWifiService.mode() == WifiRuntimeMode::AP) {
+  // Performance mode: run WiFi/web only in config mode.
+  // Boot directly into AP/config mode only when no WiFi credentials exist.
+  if (gSettingsStore.settings().wifiSsid[0] == '\0') {
+    gWifiService.startAp();
     gConfigMode = true;
     gWebService.begin();
-    gRssRuntime.setSuspended(true);
-    applySchedulerMode();
-  } else {
-    // Normal scrolling mode with WiFi off to reduce display artifacts.
-    gWifiService.stopWifi();
     gRssRuntime.setSuspended(false);
     gRssRuntime.forceRefreshSoon();
+    applySchedulerMode();
+  } else {
+    // Normal scrolling mode: WiFi off and RSS refresh suspended for max smoothness.
+    gWifiService.stopWifi();
+    gRssRuntime.setSuspended(true);
     applySchedulerMode();
   }
 
@@ -351,15 +352,24 @@ void loop() {
   handleSerialInput();
   handleConfigButton();
 
-  gRssRuntime.setSuspended(gConfigMode);
-  gRssRuntime.tick();
-  gWifiService.tick();
-  gWebService.tick();
+  if (gConfigMode) {
+    gRssRuntime.setSuspended(false);
+    gRssRuntime.tick();
+    gWifiService.tick();
+    gWebService.tick();
+  } else {
+    gRssRuntime.setSuspended(true);
+  }
+
   gScroller.tick();
   gScheduler.tick();
   if (!gConfigMode && !gManualModeOverride) {
     applySchedulerMode();
   }
 
-  delay(1);
+  if (gConfigMode) {
+    delay(1);
+  } else {
+    delay(0);
+  }
 }

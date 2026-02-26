@@ -77,9 +77,11 @@ bool RssRuntime::hasCachedContent() const {
   return false;
 }
 
+bool RssRuntime::cacheReady() const { return _cacheReady; }
+
 bool RssRuntime::nextSegment(String& outText, uint8_t& outR, uint8_t& outG,
                              uint8_t& outB) {
-  if (!hasEnabledSources() || (!_cacheReady && !hasCachedContent())) {
+  if (!hasEnabledSources() || !_cacheReady) {
     return false;
   }
 
@@ -175,7 +177,7 @@ bool RssRuntime::pickNextItem() {
 
   if (!_cache.pickRandomItemNoRepeat(_sources, _sourceCount, item, sourceIndex,
                                      cycleReset, &flags)) {
-    _cacheReady = hasCachedContent();
+    _cacheReady = false;
     return false;
   }
 

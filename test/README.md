@@ -14,3 +14,4 @@ Current status:
 - AP/config mode and web API/UI smoke checks
 - Mount regression check: confirm boot no longer reports missing `"spiffs"` partition after LittleFS label fix.
 - Stability regression check: exit config mode and verify no `loopTask` stack overflow during RSS refresh.
+- Smoothness regression check: outside config mode verify scrolling remains smooth with WiFi/web tasks suspended.

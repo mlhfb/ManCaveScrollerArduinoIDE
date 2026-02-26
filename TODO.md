@@ -98,3 +98,4 @@
 - 2026-02-26: Fixed LittleFS mount regression by mounting partition label `littlefs` explicitly in `SettingsStore`.
 - 2026-02-26: Fixed RSS refresh `loopTask` stack overflow by removing large on-stack item buffer from runtime refresh path.
 - 2026-02-26: Reduced missing-cache file spam by checking cache file existence before open.
+- 2026-02-26: Optimized runtime for smoother scrolling by suspending WiFi/web/RSS refresh outside config mode; config mode still runs scrolling + WiFi simultaneously.

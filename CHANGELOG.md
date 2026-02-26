@@ -43,6 +43,9 @@ All notable changes to this project are documented here.
 - Scheduler RSS mode now supports real cached RSS title/description playback instead of placeholder-only behavior.
 - `/api/status` now includes `rss_source_count` and `rss_sources[]` cache metadata (`cache_valid`, `cache_item_count`, `cache_updated_epoch`).
 - Serial controls now include manual/auto scheduler selection (`m`/`r`/`b` and `a`).
+- Runtime mode behavior is now scroll-priority:
+  - outside config mode: WiFi/web/RSS refresh work is suspended for max scroll smoothness
+  - inside config mode: scrolling and WiFi/web run simultaneously
 
 ### Fixed
 - Resolved lack of noticeable speed impact by widening delay profile and enforcing top speed delay `0 ms`.
@@ -50,3 +53,4 @@ All notable changes to this project are documented here.
 - Fixed LittleFS mount failure on ESP32 Arduino by explicitly mounting partition label `"littlefs"` (default Arduino label is `"spiffs"`).
 - Fixed `loopTask` stack overflow during RSS refresh by moving large fetch item buffer off stack to persistent runtime storage.
 - Reduced repeated LittleFS open errors for missing cache files by checking file existence before opening.
+- Removed per-frame cache filesystem checks from auto mode arbitration path to reduce scroll jitter.
