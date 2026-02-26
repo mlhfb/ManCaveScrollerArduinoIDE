@@ -32,6 +32,8 @@ RssRuntime::RssRuntime(SettingsStore& settingsStore, WifiService& wifiService)
       _haveCurrentItem(false),
       _showTitleNext(true),
       _currentSourceIndex(0),
+      _currentColorIndex(0),
+      _colorRotationIndex(0),
       _orderedSourceIndex(0),
       _orderedItemIndex(0),
       _currentItem{},
@@ -103,7 +105,7 @@ bool RssRuntime::nextSegment(String& outText, uint8_t& outR, uint8_t& outG,
     return false;
   }
 
-  colorForSource(_currentSourceIndex, outR, outG, outB);
+  colorForSource(_currentColorIndex, outR, outG, outB);
   bool singleSegment = false;
   if (_currentSourceIndex < _sourceCount) {
     String sourceUrl = _sources[_currentSourceIndex].url;
@@ -114,7 +116,7 @@ bool RssRuntime::nextSegment(String& outText, uint8_t& outR, uint8_t& outG,
   if (_showTitleNext) {
     outText = (_currentItem.title[0] != '\0') ? _currentItem.title : "(no title)";
     if (singleSegment && _currentItem.description[0] != '\0') {
-      outText += " | ";
+      outText += "  ";
       outText += _currentItem.description;
       _showTitleNext = true;
       _haveCurrentItem = false;
@@ -248,6 +250,7 @@ bool RssRuntime::pickNextItem() {
   _currentItem = item;
   _currentItem.flags = flags;
   _currentSourceIndex = sourceIndex;
+  _currentColorIndex = _colorRotationIndex++;
   _haveCurrentItem = true;
   _showTitleNext = true;
   Serial.print("[RSS] Random pick source=");
@@ -357,6 +360,7 @@ bool RssRuntime::pickNextItemOrdered() {
 
     _currentItem = item;
     _currentSourceIndex = sourceIndex;
+    _currentColorIndex = _colorRotationIndex++;
     _haveCurrentItem = true;
     _showTitleNext = true;
 
@@ -385,6 +389,7 @@ void RssRuntime::resetPlayback() {
   _haveCurrentItem = false;
   _showTitleNext = true;
   _currentSourceIndex = 0;
+  _currentColorIndex = 0;
   _orderedSourceIndex = 0;
   _orderedItemIndex = 0;
   memset(&_currentItem, 0, sizeof(_currentItem));

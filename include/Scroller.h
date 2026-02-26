@@ -22,14 +22,22 @@ public:
   void clearCycleComplete();
 
 private:
+  static constexpr size_t kMaxRenderedChars = 512;
+
+  void parseInlineColorMarkup(const String& text, uint16_t defaultColor);
+  bool parseHexColorTag(const String& text, size_t offset,
+                        uint16_t& outColor) const;
+
   DisplayPanel& _panel;
 
   String _text;
+  uint16_t _charColors[kMaxRenderedChars];
   uint16_t _textPixelWidth;
   int16_t _x;
   uint16_t _color;
   uint16_t _stepDelayMs;
   uint8_t _pixelsPerTick;
+  bool _usePerCharColors;
   bool _active;
   bool _cycleComplete;
 };

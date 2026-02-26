@@ -118,3 +118,6 @@
 - 2026-02-26: Added serial `n` shortcut to force-advance immediately to the next scroll item.
 - 2026-02-26: Sports JSON parser now reads nested `home/away.score` and `detail` fields from backend payloads.
 - 2026-02-26: Sports items now scroll as a single combined segment (`title | description`) instead of split title/description passes.
+- 2026-02-26: Scheduled/future games now suppress score display (example style: `Team at Team  Thu, ...`).
+- 2026-02-26: Live/final games now colorize winning score green and losing score red.
+- 2026-02-26: RSS base color now rotates by item; renderer now supports inline per-character color markup.

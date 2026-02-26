@@ -64,6 +64,8 @@ private:
   bool _haveCurrentItem;
   bool _showTitleNext;
   size_t _currentSourceIndex;
+  uint8_t _currentColorIndex;
+  uint8_t _colorRotationIndex;
   size_t _orderedSourceIndex;
   uint32_t _orderedItemIndex;
   RssItem _currentItem;

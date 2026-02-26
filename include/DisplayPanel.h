@@ -14,6 +14,8 @@ public:
   void setBrightness(uint8_t brightness);
   void clear();
   void drawTextAt(int16_t x, const char* text, uint16_t color);
+  void drawTextAtColored(int16_t x, const char* text, const uint16_t* colors,
+                         size_t colorCount, uint16_t fallbackColor);
   void show();
 
   uint16_t width() const;

@@ -43,6 +43,7 @@ All notable changes to this project are documented here.
 - WiFi password visibility toggle button in web UI.
 - Serial debug tracing for content scheduler starts and RSS source refresh/pick events.
 - Serial `n` command to skip/advance to next scroll item immediately.
+- Inline per-character color rendering support in scroller/display path for mixed-color sports score lines.
 
 ### Changed
 - Scroll speed now adjusts only `FastLED.delay()` timing, with default `speed=10` mapping to `0 ms`.
@@ -66,6 +67,9 @@ All notable changes to this project are documented here.
 - Sports source URL builder now targets backend JSON mode via `espn_scores_rss.php?sport=<sport>&format=json` and normalizes legacy `espn_scores_json.php` path text.
 - Ordered (non-random) source playback now traverses selected sports in this order:
   `mlb, nhl, ncaaf, nfl, nba, big10`, then `npr`.
+- Sports score line format now prefers concise single-line style:
+  - live/final example: `Detroit Tigers 2 at Baltimore Orioles 2  bottom of the 4th.`
+  - scheduled example: `Colorado Rockies at San Francisco Giants  Thu, February 26th at 3:05 PM EST`
 
 ### Fixed
 - Resolved lack of noticeable speed impact by widening delay profile and enforcing top speed delay `0 ms`.
@@ -85,3 +89,6 @@ All notable changes to this project are documented here.
 - Backend sports JSON compatibility improved:
   - nested `home/away.score` values and `detail` text are now captured
   - sports entries now scroll as one complete combined message (matchup + score/start detail)
+- Future/scheduled games now suppress placeholder `0 at 0` scores when status/detail indicates a scheduled start time.
+- Winning score now renders green and losing score red for non-tied scored games.
+- RSS base message color now rotates per item instead of staying fixed to source index.

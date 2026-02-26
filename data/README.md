@@ -27,3 +27,4 @@ Documentation note:
 - If browser still shows an older UI (missing playback toggle), re-run `pio run -t uploadfs` and hard-refresh browser cache.
 - Sports backend URL generation now targets `espn_scores_rss.php` with `format=json`.
 - Sports messages now render as a single combined line per item (matchup + score/start detail).
+- Scheduled sports games now render matchup + start detail without placeholder `0 at 0` scores.

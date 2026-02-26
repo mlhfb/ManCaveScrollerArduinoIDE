@@ -68,6 +68,22 @@ void DisplayPanel::drawTextAt(int16_t x, const char* text, uint16_t colorValue) 
   _matrix->print(text);
 }
 
+void DisplayPanel::drawTextAtColored(int16_t x, const char* text,
+                                     const uint16_t* colors, size_t colorCount,
+                                     uint16_t fallbackColor) {
+  if (_matrix == nullptr || text == nullptr) {
+    return;
+  }
+
+  int16_t cursorX = x;
+  for (size_t i = 0; text[i] != '\0'; i++) {
+    const uint16_t chColor =
+        (colors != nullptr && i < colorCount) ? colors[i] : fallbackColor;
+    _matrix->drawChar(cursorX, 0, text[i], chColor, 0, 1);
+    cursorX += 6;
+  }
+}
+
 void DisplayPanel::show() {
   if (_matrix != nullptr) {
     _matrix->show();

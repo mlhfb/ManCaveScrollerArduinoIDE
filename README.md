@@ -41,7 +41,9 @@ After web UI changes, run `pio run -t uploadfs` so the device serves the updated
     - in config mode: uses active STA connection
     - outside config mode: radio cycles on, fetches next source/news, radio cycles off
   - items with empty description display title only (description segment skipped)
-  - sports items scroll as one complete message (`matchup | score/start detail`)
+  - sports items scroll as one complete message (`matchup + score/start detail`)
+  - scheduled/future sports entries suppress `0 at 0` score placeholders
+  - scored sports entries color winning score green and losing score red
 - Web API: endpoint contract implemented (`/api/status`, messages/text/color, speed/brightness/appearance, wifi, advanced, rss, factory-reset), including `rss_source_count` + `rss_sources[]` cache metadata in status.
 - Web UI served from LittleFS (`/web/index.html`) for full setup:
   - message editing (5 slots)
@@ -70,6 +72,7 @@ After web UI changes, run `pio run -t uploadfs` so the device serves the updated
 - RSS refresh path is stack-safe on Arduino `loopTask` (fetch buffer is persistent, not local-stack allocated).
 - Sports fetch path now targets backend JSON responses via `espn_scores_rss.php` + `format=json` and parses JSON directly.
 - Sports JSON parser supports backend-style nested objects (`home/away.score`) and `detail` status fields.
+- Renderer supports inline mixed-color score fragments while keeping a rotating base message color per RSS item.
 
 ## Objective
 Create a new version of the scroller that:

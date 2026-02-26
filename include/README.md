@@ -33,3 +33,4 @@ Runtime safety note:
 - RSS fetcher supports both RSS XML and sports JSON payload parsing (JSON-first for sports URLs).
 - Content scheduler exposes `advanceNow()` for manual next-item control from serial/debug tooling.
 - RSS runtime combines sports title+description into one segment for complete single-line score messages.
+- Display/scroller pipeline supports inline color markup for per-fragment color (used for winner/loser score coloring).

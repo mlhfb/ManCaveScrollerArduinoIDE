@@ -145,6 +145,101 @@ bool extractScoreText(JsonVariantConst value, String& out) {
   return out.length() > 0;
 }
 
+bool parseScoreValue(const String& scoreText, int& outScore) {
+  if (scoreText.length() == 0) {
+    return false;
+  }
+
+  bool sawDigit = false;
+  int value = 0;
+  for (size_t i = 0; i < scoreText.length(); i++) {
+    const char c = scoreText[i];
+    if (c >= '0' && c <= '9') {
+      sawDigit = true;
+      value = value * 10 + (c - '0');
+    } else if (sawDigit) {
+      break;
+    }
+  }
+  if (!sawDigit) {
+    return false;
+  }
+  outScore = value;
+  return true;
+}
+
+bool looksLikeLiveGameDetail(const String& detailText) {
+  String lower = detailText;
+  lower.toLowerCase();
+  return lower.indexOf("top of") >= 0 || lower.indexOf("bottom of") >= 0 ||
+         lower.indexOf("halftime") >= 0 || lower.indexOf("qtr") >= 0 ||
+         lower.indexOf("quarter") >= 0 || lower.indexOf("period") >= 0 ||
+         lower.indexOf("in progress") >= 0 || lower.indexOf("live") >= 0;
+}
+
+bool looksLikeFinalGameDetail(const String& detailText) {
+  String lower = detailText;
+  lower.toLowerCase();
+  return lower.indexOf("final") >= 0 || lower.indexOf("completed") >= 0;
+}
+
+bool looksLikeScheduledDetail(const String& detailText) {
+  String lower = detailText;
+  lower.toLowerCase();
+
+  if (looksLikeLiveGameDetail(detailText) || looksLikeFinalGameDetail(detailText)) {
+    return false;
+  }
+
+  if (lower.indexOf("scheduled") >= 0 || lower.indexOf("pre-game") >= 0 ||
+      lower.indexOf("pregame") >= 0) {
+    return true;
+  }
+
+  const bool hasAt = lower.indexOf(" at ") >= 0;
+  const bool hasClock = (lower.indexOf(":") >= 0) &&
+                        (lower.indexOf(" am") >= 0 || lower.indexOf(" pm") >= 0);
+  const bool hasTz = lower.indexOf(" est") >= 0 || lower.indexOf(" edt") >= 0 ||
+                     lower.indexOf(" et") >= 0;
+
+  return hasAt && (hasClock || hasTz);
+}
+
+String colorTagWrap(const String& text, const char* hexColor) {
+  String out = "[[#";
+  out += hexColor;
+  out += "]]";
+  out += text;
+  out += "[[/]]";
+  return out;
+}
+
+void formatSportsHeadline(const String& awayName, const String& homeName,
+                          const String& awayScore, const String& homeScore,
+                          bool showScores, String& outTitle) {
+  if (!showScores || awayScore.length() == 0 || homeScore.length() == 0) {
+    outTitle = awayName + " at " + homeName;
+    return;
+  }
+
+  int awayValue = 0;
+  int homeValue = 0;
+  const bool haveAwayValue = parseScoreValue(awayScore, awayValue);
+  const bool haveHomeValue = parseScoreValue(homeScore, homeValue);
+
+  String awayScoreDisplay = awayScore;
+  String homeScoreDisplay = homeScore;
+  if (haveAwayValue && haveHomeValue && awayValue != homeValue) {
+    awayScoreDisplay =
+        colorTagWrap(awayScore, (awayValue > homeValue) ? "00FF00" : "FF0000");
+    homeScoreDisplay =
+        colorTagWrap(homeScore, (homeValue > awayValue) ? "00FF00" : "FF0000");
+  }
+
+  outTitle = awayName + " " + awayScoreDisplay + " at " + homeName + " " +
+             homeScoreDisplay;
+}
+
 void appendPart(String& base, const String& part, const char* separator) {
   if (part.length() == 0) {
     return;
@@ -259,17 +354,32 @@ bool extractEspnEvent(JsonObjectConst obj, String& outTitle, String& outDescript
     homeScore = secondScore;
   }
 
-  outTitle = awayName + " at " + homeName;
-
-  if (awayScore.length() > 0 && homeScore.length() > 0) {
-    outDescription = awayName + " " + awayScore + " - " + homeScore + " " + homeName;
-  }
-
   String status;
   if (!readNestedStatus(competition, status)) {
     readNestedStatus(obj, status);
   }
-  appendPart(outDescription, status, " | ");
+
+  bool isLive = looksLikeLiveGameDetail(status);
+  if (!isLive) {
+    JsonVariantConst statusNode = competition["status"];
+    if (statusNode.is<JsonObjectConst>()) {
+      JsonObjectConst statusObj = statusNode.as<JsonObjectConst>();
+      JsonVariantConst typeNode = statusObj["type"];
+      if (typeNode.is<JsonObjectConst>()) {
+        String state;
+        if (readStringField(typeNode.as<JsonObjectConst>(), "state", state)) {
+          state.toLowerCase();
+          isLive = (state == "in" || state == "live");
+        }
+      }
+    }
+  }
+
+  const bool showScores = awayScore.length() > 0 && homeScore.length() > 0 &&
+                          !(looksLikeScheduledDetail(status) && !isLive);
+  formatSportsHeadline(awayName, homeName, awayScore, homeScore, showScores,
+                       outTitle);
+  outDescription = status;
 
   return outTitle.length() > 0;
 }
@@ -336,10 +446,23 @@ bool extractHomeAwayPair(JsonObjectConst obj, String& outTitle, String& outDescr
     extractScoreText(homeObj["score"], homeScore);
   }
 
-  outTitle = awayName + " at " + homeName;
-  if (awayScore.length() > 0 && homeScore.length() > 0) {
-    outDescription = awayName + " " + awayScore + " - " + homeScore + " " + homeName;
+  String detail;
+  if (!readStringField(obj, "detail", detail)) {
+    readStringField(obj, "summary", detail);
   }
+  if (detail.length() == 0) {
+    readNestedStatus(obj, detail);
+  }
+
+  const bool isLive = (obj["isLive"].is<bool>() && obj["isLive"].as<bool>()) ||
+                      (obj["live"].is<bool>() && obj["live"].as<bool>()) ||
+                      looksLikeLiveGameDetail(detail);
+
+  const bool showScores = awayScore.length() > 0 && homeScore.length() > 0 &&
+                          !(looksLikeScheduledDetail(detail) && !isLive);
+  formatSportsHeadline(awayName, homeName, awayScore, homeScore, showScores,
+                       outTitle);
+  outDescription = detail;
   return true;
 }
 
@@ -352,17 +475,6 @@ bool parseJsonItemObject(JsonObjectConst obj, String& outTitle, String& outDescr
     return true;
   }
   if (extractHomeAwayPair(obj, outTitle, outDescription)) {
-    String detail;
-    if (readStringField(obj, "detail", detail) || readStringField(obj, "summary", detail)) {
-      appendPart(outDescription, detail, " | ");
-    }
-    if ((obj["isLive"].is<bool>() && obj["isLive"].as<bool>()) ||
-        (obj["live"].is<bool>() && obj["live"].as<bool>())) {
-      appendPart(outDescription, "LIVE", " | ");
-    }
-    String status;
-    readNestedStatus(obj, status);
-    appendPart(outDescription, status, " | ");
     return outTitle.length() > 0;
   }
 
