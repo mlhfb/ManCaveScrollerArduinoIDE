@@ -40,6 +40,7 @@
 - [x] Implement AP bootstrap flow when no STA creds are available.
 - [x] Implement STA connection flow with timeout/retry.
 - [x] Implement BOOT button config mode toggle (enter: WiFi/web on, exit: apply settings and resume scrolling).
+- [x] Implement external encoder button (GPIO35, active-low) to mirror BOOT config-mode toggle behavior.
 - [x] Minimize WiFi-induced display artifacts (radio on only when needed in STA mode).
 - [x] Add captive portal DNS behavior for AP mode.
 
@@ -56,6 +57,7 @@
 - [x] `POST /api/wifi`
 - [x] `POST /api/advanced`
 - [x] `POST /api/rss`
+- [x] `POST /api/exit-config`
 - [x] `POST /api/factory-reset`
 - [x] Validate payloads and return consistent JSON error messages.
 
@@ -121,3 +123,8 @@
 - 2026-02-26: Scheduled/future games now suppress score display (example style: `Team at Team  Thu, ...`).
 - 2026-02-26: Live/final games now colorize winning score green and losing score red.
 - 2026-02-26: RSS base color now rotates by item; renderer now supports inline per-character color markup.
+- 2026-02-26: Weather API URL moved to local `include/Secrets.h` (`APP_WEATHER_API_URL`) with committed template `include/Secrets.example.h`.
+- 2026-02-26: Added web `Save + Exit Config Mode` flow and `POST /api/exit-config` route.
+- 2026-02-26: Added GPIO35 encoder button config-mode toggle; active-low behavior aligned with rssArduinoPlatform.
+- 2026-02-26: Fixed startup sequencing so weather is re-queued first after boot loading completes.
+- 2026-02-26: Time display now uses Eastern timezone with 24-hour uppercase format (`THU FEB 26 -- 15:48`).

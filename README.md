@@ -5,6 +5,12 @@ Repository for a clean Arduino-framework rewrite of ManCaveScroller on ESP32.
 Current status: Phase 9 implementation baseline is buildable (`pio run`, `pio run -t buildfs`).
 After web UI changes, run `pio run -t uploadfs` so the device serves the updated `data/web/index.html`.
 
+## Local Secrets
+- Weather API URL/key is read from `APP_WEATHER_API_URL` in local `include/Secrets.h`.
+- `include/Secrets.h` is git-ignored and will not be pushed.
+- Use `include/Secrets.example.h` as the template for creating your local secrets file.
+- If `APP_WEATHER_API_URL` is not set, weather interstitials show `Weather unavailable`.
+
 ## Current Firmware Status
 - Display pipeline: `FastLED` + `FastLED_NeoMatrix` on ESP32 Arduino.
 - Font: Adafruit GFX built-in 5x7 (matching legacy `rssArduinoPlatform` look).
@@ -16,6 +22,7 @@ After web UI changes, run `pio run -t uploadfs` so the device serves the updated
   - AP bootstrap when no saved STA credentials
   - STA connection flow with timeout/retry
   - BOOT button toggle for config mode
+  - GPIO35 external encoder button toggle for config mode (active-low; same behavior as BOOT)
   - captive DNS redirect in AP mode
   - WiFi radio off during normal scrolling mode to reduce artifacts
   - Outside config mode, runtime suspends WiFi/web/RSS refresh tasks and prioritizes scroll output
@@ -40,11 +47,15 @@ After web UI changes, run `pio run -t uploadfs` so the device serves the updated
   - ordered mode refreshes each source at source-cycle start:
     - in config mode: uses active STA connection
     - outside config mode: radio cycles on, fetches next source/news, radio cycles off
+  - startup weather message is queued first after boot refresh before sports/news playback
+  - interstitial cycle after every 6 items: `time -> weather -> message1..message5`
+  - time message format: `THU FEB 26 -- 15:48` (Eastern, 24-hour)
   - items with empty description display title only (description segment skipped)
   - sports items scroll as one complete message (`matchup + score/start detail`)
   - scheduled/future sports entries suppress `0 at 0` score placeholders
   - scored sports entries color winning score green and losing score red
 - Web API: endpoint contract implemented (`/api/status`, messages/text/color, speed/brightness/appearance, wifi, advanced, rss, factory-reset), including `rss_source_count` + `rss_sources[]` cache metadata in status.
+- Web API includes `/api/exit-config` for UI-triggered save-and-exit flow.
 - Web UI served from LittleFS (`/web/index.html`) for full setup:
   - message editing (5 slots)
   - appearance sliders
@@ -52,6 +63,7 @@ After web UI changes, run `pio run -t uploadfs` so the device serves the updated
   - WiFi password show/hide toggle button
   - advanced panel settings
   - RSS + sports source configuration
+  - one-click `Save + Exit Config Mode` action
   - playback-order randomization toggle (`Randomize RSS/sports item order (shuffle, OFF by default)`)
   - factory reset confirmation
   - non-destructive status refresh loop (does not overwrite unsaved form edits while configuring)

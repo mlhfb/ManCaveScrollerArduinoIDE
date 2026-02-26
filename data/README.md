@@ -21,6 +21,7 @@ Documentation note:
 - In config mode the scroller prompt includes mode/SSID/IP so users can reach the hosted page.
 - Web UI polling refreshes status without overwriting unsaved config form values.
 - Advanced UI includes RSS playback randomization toggle under `Playback Order`.
+- WiFi card includes `Save + Exit Config Mode` button (saves all UI sections, then calls `/api/exit-config`).
 - Randomization toggle is OFF by default (`rss_random_enabled=false`) on fresh/default settings.
 - WiFi form includes a password visibility toggle button.
 - Current page stamp: `UI build: 2026-02-26`.
@@ -28,3 +29,4 @@ Documentation note:
 - Sports backend URL generation now targets `espn_scores_rss.php` with `format=json`.
 - Sports messages now render as a single combined line per item (matchup + score/start detail).
 - Scheduled sports games now render matchup + start detail without placeholder `0 at 0` scores.
+- Time interstitial now renders Eastern 24-hour uppercase format (`THU FEB 26 -- 15:48`).

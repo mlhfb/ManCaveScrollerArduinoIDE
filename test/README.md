@@ -32,5 +32,9 @@ Current status:
 - Score-color check: verify higher score renders green and lower score renders red on scored games.
 - Ordered sequence check: with random disabled verify selected sports scroll in `mlb, nhl, ncaaf, nfl, nba, big10` order, then `npr`.
 - UI check: verify WiFi password field has show/hide button behavior.
+- UI save/exit check: click `Save + Exit Config Mode`, verify settings persist and device leaves config mode.
 - Serial control check: press `n` repeatedly and confirm immediate item advancement across current mode.
 - Debug log check: verify serial prints source refresh/pick lines and `[SCROLL]` lines for each started text segment.
+- Input check: GPIO35 encoder button press (active-low with external pull-up) toggles config mode like BOOT.
+- Time format check: interstitial time should be Eastern and render as `THU FEB 26 -- 15:48` style.
+- Secrets check: with missing `include/Secrets.h`, verify weather log reports missing `APP_WEATHER_API_URL` and scroll fallback is `Weather unavailable`.

@@ -16,7 +16,8 @@ WebService::WebService(SettingsStore& store, WifiService& wifiService)
       _rssRuntime(nullptr),
       _onSettingsChanged(nullptr),
       _onWifiConnectRequested(nullptr),
-      _onFactoryResetRequested(nullptr) {}
+      _onFactoryResetRequested(nullptr),
+      _onExitConfigRequested(nullptr) {}
 
 WebService::~WebService() { stop(); }
 
@@ -63,6 +64,10 @@ void WebService::setOnFactoryResetRequested(VoidCallback cb) {
   _onFactoryResetRequested = cb;
 }
 
+void WebService::setOnExitConfigRequested(VoidCallback cb) {
+  _onExitConfigRequested = cb;
+}
+
 void WebService::setRssRuntime(RssRuntime* rssRuntime) { _rssRuntime = rssRuntime; }
 
 void WebService::registerRoutes() {
@@ -81,6 +86,7 @@ void WebService::registerRoutes() {
   _server->on("/api/wifi", HTTP_POST, [this]() { handleWifi(); });
   _server->on("/api/advanced", HTTP_POST, [this]() { handleAdvanced(); });
   _server->on("/api/rss", HTTP_POST, [this]() { handleRss(); });
+  _server->on("/api/exit-config", HTTP_POST, [this]() { handleExitConfig(); });
   _server->on("/api/factory-reset", HTTP_POST, [this]() { handleFactoryReset(); });
   _server->onNotFound([this]() { handleNotFound(); });
 }
@@ -401,6 +407,13 @@ void WebService::handleFactoryReset() {
     _store.factoryReset();
   }
   sendStatusMessage("Factory reset triggered");
+}
+
+void WebService::handleExitConfig() {
+  sendStatusMessage("Exiting config mode");
+  if (_onExitConfigRequested) {
+    _onExitConfigRequested();
+  }
 }
 
 void WebService::handleNotFound() const {

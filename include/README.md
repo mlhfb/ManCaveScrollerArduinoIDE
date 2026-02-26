@@ -27,10 +27,13 @@ Runtime safety note:
 - Main loop uses a scroll-priority fast path outside config mode (WiFi/web/RSS refresh suspended).
 - WifiService exposes both current `IP` and `SSID` for config-mode status prompt rendering.
 - WebService includes compatibility handling for legacy/alternate RSS payload key names.
+- WebService exposes `/api/exit-config` callback wiring for UI-triggered config exit.
 - App settings include `rss_random_enabled` for selectable random/ordered RSS playback.
 - RSS runtime ordered mode can refresh per-source with managed radio cycling outside config mode.
 - RSS runtime exposes `refreshAllNow()` for cold-boot immediate refresh sequencing.
+- RSS runtime exposes `queueStartupWeather()` so boot transition can force weather-first playback.
 - RSS fetcher supports both RSS XML and sports JSON payload parsing (JSON-first for sports URLs).
 - Content scheduler exposes `advanceNow()` for manual next-item control from serial/debug tooling.
 - RSS runtime combines sports title+description into one segment for complete single-line score messages.
 - Display/scroller pipeline supports inline color markup for per-fragment color (used for winner/loser score coloring).
+- Weather API URL is injected via local `APP_WEATHER_API_URL` macro (from ignored `include/Secrets.h`).

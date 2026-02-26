@@ -12,6 +12,7 @@
 
 namespace {
 constexpr uint8_t kConfigButtonPin = 0;  // BOOT button on ESP32 DevKit
+constexpr uint8_t kEncoderButtonPin = 35;  // External encoder button (active-low)
 constexpr uint32_t kButtonDebounceMs = 250;
 constexpr uint32_t kConfigPromptRefreshMs = 2000;
 constexpr uint32_t kBootRefreshTaskStackWords = 6144;
@@ -40,6 +41,10 @@ uint32_t gLastConfigPromptMs = 0;
 
 bool gLastButtonState = true;
 uint32_t gLastButtonChangeMs = 0;
+bool gLastEncoderButtonState = true;
+uint32_t gLastEncoderButtonChangeMs = 0;
+
+volatile bool gExitConfigRequested = false;
 
 bool gBootLoadingMode = false;
 volatile bool gBootRefreshComplete = false;
@@ -196,6 +201,7 @@ void completeBootLoadingIfReady(bool cycleComplete) {
   }
 
   gBootLoadingMode = false;
+  gRssRuntime.queueStartupWeather();
   gScheduler.setConfigPromptText("Config mode active");
   applySchedulerMode();
   Serial.print("Boot refresh done: ");
@@ -329,6 +335,8 @@ void onFactoryResetRequested() {
   ESP.restart();
 }
 
+void onExitConfigRequested() { gExitConfigRequested = true; }
+
 void handleSerialInput() {
   while (Serial.available() > 0) {
     const char c = static_cast<char>(Serial.read());
@@ -395,24 +403,32 @@ void handleSerialInput() {
 }
 
 void handleConfigButton() {
-  const bool buttonState = digitalRead(kConfigButtonPin);
   const uint32_t now = millis();
+  auto processButton = [&](uint8_t pin, bool& lastState, uint32_t& lastChangeMs) {
+    const bool buttonState = digitalRead(pin);
+    if (buttonState == lastState) {
+      return;
+    }
+    if ((now - lastChangeMs) <= kButtonDebounceMs) {
+      return;
+    }
 
-  if (buttonState != gLastButtonState) {
-    if ((now - gLastButtonChangeMs) > kButtonDebounceMs) {
-      gLastButtonChangeMs = now;
-      gLastButtonState = buttonState;
+    lastChangeMs = now;
+    lastState = buttonState;
 
-      // BOOT is active-low
-      if (!buttonState) {
-        if (gConfigMode) {
-          exitConfigMode();
-        } else {
-          enterConfigMode();
-        }
+    // Legacy encoder library in rssArduinoPlatform treats button as active-low.
+    if (!buttonState) {
+      if (gConfigMode) {
+        exitConfigMode();
+      } else {
+        enterConfigMode();
       }
     }
-  }
+  };
+
+  processButton(kConfigButtonPin, gLastButtonState, gLastButtonChangeMs);
+  processButton(kEncoderButtonPin, gLastEncoderButtonState,
+                gLastEncoderButtonChangeMs);
 }
 
 void setup() {
@@ -423,7 +439,9 @@ void setup() {
   Serial.println("RSS/cache runtime integration build");
 
   pinMode(kConfigButtonPin, INPUT_PULLUP);
+  pinMode(kEncoderButtonPin, INPUT);
   gLastButtonState = digitalRead(kConfigButtonPin);
+  gLastEncoderButtonState = digitalRead(kEncoderButtonPin);
 
   if (!gSettingsStore.begin()) {
     Serial.println("Settings/LittleFS init failed");
@@ -442,6 +460,7 @@ void setup() {
   gWebService.setOnSettingsChanged(onSettingsChanged);
   gWebService.setOnWifiConnectRequested(onWifiConnectRequested);
   gWebService.setOnFactoryResetRequested(onFactoryResetRequested);
+  gWebService.setOnExitConfigRequested(onExitConfigRequested);
   gWebService.setRssRuntime(&gRssRuntime);
 
   gWifiService.begin();
@@ -449,18 +468,27 @@ void setup() {
     Serial.println("RSS runtime init failed");
   }
 
+  const bool hasSavedWifi = gSettingsStore.settings().wifiSsid[0] != '\0';
+  const bool bootRefreshPlanned = hasSavedWifi && shouldRunBootRefresh();
+  gBootLoadingMode = bootRefreshPlanned;
+
+  if (bootRefreshPlanned) {
+    gScheduler.setConfigPromptText(kBootLoadingText);
+    gScheduler.setMode(ContentMode::ConfigPrompt);
+  } else {
+    gScheduler.setConfigPromptText("Config mode active");
+  }
+
   applyRuntimeFromSettings(gSettingsStore.settings());
-  gScheduler.setConfigPromptText("Config mode active");
   gScheduler.setRssPlaceholder("Loading RSS feed cache", "Using message fallback");
   gScheduler.setRssSegmentProvider(provideRssSegment);
   gScheduler.setFallbackText("RSS unavailable fallback");
   gScheduler.begin(gScheduledMessages, APP_MAX_MESSAGES,
                    appScrollDelayForSpeed(gScrollSpeed), gPixelStep);
-  gScheduler.setMode(ContentMode::Fallback);
 
   // Performance mode: run WiFi/web only in config mode.
   // Boot directly into AP/config mode only when no WiFi credentials exist.
-  if (gSettingsStore.settings().wifiSsid[0] == '\0') {
+  if (!hasSavedWifi) {
     gWifiService.startAp();
     gConfigMode = true;
     gWebService.begin();
@@ -474,8 +502,11 @@ void setup() {
     gWifiService.stopWifi();
     gRssRuntime.setRadioControlEnabled(true);
     gRssRuntime.setSuspended(true);
-    applySchedulerMode();
-    beginBootLoadingRefresh();
+    if (bootRefreshPlanned) {
+      beginBootLoadingRefresh();
+    } else {
+      applySchedulerMode();
+    }
   }
 
   printSerialHelp();
@@ -484,6 +515,10 @@ void setup() {
 void loop() {
   handleSerialInput();
   handleConfigButton();
+  if (gExitConfigRequested) {
+    gExitConfigRequested = false;
+    exitConfigMode();
+  }
 
   if (gConfigMode) {
     gRssRuntime.setSuspended(false);

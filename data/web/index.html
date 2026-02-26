@@ -201,6 +201,7 @@
       </div>
       <button class="btn" onclick="saveWifi()">Connect</button>
       <button class="btn btn-alt" onclick="showAdvanced()">Advanced</button>
+      <button class="btn btn-warn" onclick="saveAndExit()">Save + Exit Config Mode</button>
     </div>
   </div>
 
@@ -479,6 +480,83 @@
         await loadStatus(true);
       } catch (err) {
         setStatus("Save RSS failed: " + err.message, false);
+      }
+    }
+
+    function syncMessagesFromEditor() {
+      if (!Array.isArray(messages)) {
+        messages = [];
+      }
+      while (messages.length < 5) {
+        messages.push({ text: "", r: 255, g: 255, b: 255, enabled: false });
+      }
+
+      for (let i = 0; i < messages.length; i++) {
+        const enabledEl = g("msgEnabled" + i);
+        const textEl = g("msgText" + i);
+        const colorEl = g("msgColor" + i);
+        if (!enabledEl || !textEl || !colorEl) {
+          continue;
+        }
+        messages[i].enabled = enabledEl.checked;
+        messages[i].text = textEl.value;
+        const c = hexToRgb(colorEl.value);
+        messages[i].r = c.r;
+        messages[i].g = c.g;
+        messages[i].b = c.b;
+      }
+    }
+
+    async function saveAndExit() {
+      syncMessagesFromEditor();
+
+      const sports = {
+        mlb: g("sportMlb").checked,
+        nhl: g("sportNhl").checked,
+        ncaaf: g("sportNcaaf").checked,
+        nfl: g("sportNfl").checked,
+        nba: g("sportNba").checked,
+        big10: g("sportBig10").checked
+      };
+      const anySport = sports.mlb || sports.nhl || sports.ncaaf ||
+                       sports.nfl || sports.nba || sports.big10;
+
+      if (g("rssEnabled").checked && g("sportsEnabled").checked && !g("sportsBaseUrl").value.trim()) {
+        setStatus("Sports enabled but sports base URL is empty", false);
+        return;
+      }
+      if (g("rssEnabled").checked && g("sportsEnabled").checked && !anySport) {
+        setStatus("Enable at least one sport", false);
+        return;
+      }
+
+      try {
+        setStatus("Saving settings and exiting config mode...", true);
+        await callApi("/api/messages", "POST", { messages });
+        await callApi("/api/appearance", "POST", {
+          speed: Number(g("speed").value),
+          brightness: Number(g("brightness").value)
+        });
+        await callApi("/api/wifi", "POST", {
+          ssid: g("ssid").value,
+          password: g("password").value
+        });
+        await callApi("/api/advanced", "POST", {
+          panel_cols: Number(g("panelCols").value)
+        });
+        await callApi("/api/rss", "POST", {
+          enabled: g("rssEnabled").checked,
+          npr_enabled: g("nprEnabled").checked,
+          random_enabled: g("randomEnabled").checked,
+          url: g("rssUrl").value.trim(),
+          sports_enabled: g("sportsEnabled").checked,
+          sports_base_url: g("sportsBaseUrl").value.trim(),
+          sports
+        });
+        const result = await callApi("/api/exit-config", "POST", {});
+        setStatus(result.status || "Saved and exited config mode", true);
+      } catch (err) {
+        setStatus("Save+Exit failed: " + err.message, false);
       }
     }
 

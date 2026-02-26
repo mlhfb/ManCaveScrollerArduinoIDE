@@ -26,6 +26,7 @@ public:
   void setOnSettingsChanged(SettingsChangedCallback cb);
   void setOnWifiConnectRequested(VoidCallback cb);
   void setOnFactoryResetRequested(VoidCallback cb);
+  void setOnExitConfigRequested(VoidCallback cb);
   void setRssRuntime(RssRuntime* rssRuntime);
 
 private:
@@ -47,6 +48,7 @@ private:
   void handleWifi();
   void handleAdvanced();
   void handleRss();
+  void handleExitConfig();
   void handleFactoryReset();
   void handleNotFound() const;
 
@@ -57,6 +59,7 @@ private:
   SettingsChangedCallback _onSettingsChanged;
   VoidCallback _onWifiConnectRequested;
   VoidCallback _onFactoryResetRequested;
+  VoidCallback _onExitConfigRequested;
 };
 
 #endif

@@ -65,6 +65,7 @@ Implement and maintain:
 - `POST /api/wifi`
 - `POST /api/advanced`
 - `POST /api/rss`
+- `POST /api/exit-config`
 - `POST /api/factory-reset`
 
 Web server robustness:
@@ -74,6 +75,7 @@ Web server robustness:
 - Web UI should clearly expose the randomization toggle in Advanced playback settings.
 - Randomization default should be OFF unless explicitly enabled by saved settings.
 - Web UI WiFi section includes password show/hide control for setup usability.
+- Web UI should provide a save-and-exit control to leave config mode without serial interaction.
 
 ## Display/Smoothness Requirements
 - Use Arduino `loop()` with FastLED-driven render cadence (`FastLED.show()`).
@@ -90,6 +92,10 @@ Web server robustness:
   - when RSS + WiFi are configured, run an immediate fresh-content refresh at startup
   - during refresh, scroll `Now Loading...`
   - after refresh completes, switch to normal scheduling only at a scroll cycle boundary
+- Interstitial insertion policy:
+  - after each 6 displayed sports/news items, inject `time`, then `weather`, then user messages.
+- Time format policy:
+  - display Eastern time as uppercase 24-hour text (example: `THU FEB 26 -- 15:48`).
 - Config prompt text should always include reachable network context (mode + SSID + IP).
 
 ## Data/Persistence Requirements
@@ -122,6 +128,7 @@ Web server robustness:
 - Cold boot now performs an immediate RSS/sports refresh in a background task while the display scrolls `Now Loading...`.
 - After boot refresh finishes, scheduler transition waits for the current loading message to complete before switching.
 - Web root now sends no-cache headers to reduce stale UI behavior after updating LittleFS content.
+- Weather API URL/key is sourced from local `include/Secrets.h` (`APP_WEATHER_API_URL`) and not committed.
 - Sports feed URL generation now uses backend JSON mode on `espn_scores_rss.php` (`format=json`).
 - Feed fetcher parses sports JSON payloads (including nested scoreboard/event objects) and falls back to RSS parser when needed.
 - Ordered mode source traversal runs selected sports first (`mlb, nhl, ncaaf, nfl, nba, big10`) then `npr`.
@@ -132,3 +139,6 @@ Web server robustness:
 - Scheduled/future games should omit score values; scored games should include scores inline.
 - Winning score should render green and losing score red; tied scores remain base color.
 - Base RSS item color rotates by item; renderer supports inline color tags for score-only coloring.
+- Boot transition now re-queues weather so the first post-loading RSS segment is weather.
+- Time sync now uses timezone-aware NTP setup (`configTzTime`) for Eastern output correctness.
+- Config mode can now be toggled from either BOOT pin or external encoder button on GPIO35 (active-low).

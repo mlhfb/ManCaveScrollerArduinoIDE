@@ -1,8 +1,14 @@
 #include "RssRuntime.h"
 
+#include <HTTPClient.h>
+#include <WiFiClientSecure.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "RssSources.h"
+#if __has_include("Secrets.h")
+#include "Secrets.h"
+#endif
 
 namespace {
 struct ColorTriplet {
@@ -15,6 +21,65 @@ constexpr ColorTriplet kSourceColors[] = {
     {255, 255, 255}, {255, 255, 0}, {0, 255, 0},   {255, 0, 0},
     {0, 0, 255},     {0, 255, 255}, {148, 0, 211}, {255, 128, 0},
 };
+
+constexpr uint32_t kItemsPerInterstitial = 6;
+constexpr uint32_t kClockSyncRetryMs = 60UL * 1000UL;
+constexpr uint32_t kClockResyncMs = 6UL * 60UL * 60UL * 1000UL;
+constexpr uint32_t kWeatherRefreshMs = 15UL * 60UL * 1000UL;
+constexpr uint32_t kWeatherRetryMs = 60UL * 1000UL;
+constexpr const char* kNtpServer1 = "pool.ntp.org";
+constexpr const char* kNtpServer2 = "time.nist.gov";
+constexpr const char* kNtpServer3 = "time.google.com";
+constexpr const char* kEasternTz = "EST5EDT,M3.2.0/2,M11.1.0/2";
+#ifndef APP_WEATHER_API_URL
+#define APP_WEATHER_API_URL ""
+#endif
+constexpr const char* kWeatherApiUrl = APP_WEATHER_API_URL;
+
+bool extractXmlAttribute(const String& xml, const char* tagName, const char* attrName,
+                         String& out) {
+  if (tagName == nullptr || attrName == nullptr) {
+    return false;
+  }
+
+  String open = String("<") + tagName;
+  const int tagStart = xml.indexOf(open);
+  if (tagStart < 0) {
+    return false;
+  }
+
+  const int tagEnd = xml.indexOf('>', tagStart);
+  if (tagEnd < 0) {
+    return false;
+  }
+
+  String tag = xml.substring(tagStart, tagEnd + 1);
+  String key = String(attrName) + "=\"";
+  const int valueStart = tag.indexOf(key);
+  if (valueStart < 0) {
+    return false;
+  }
+
+  const int start = valueStart + key.length();
+  const int end = tag.indexOf('"', start);
+  if (end <= start) {
+    return false;
+  }
+
+  out = tag.substring(start, end);
+  out.trim();
+  return out.length() > 0;
+}
+
+void appendWeatherPart(String& out, const String& prefix, const String& value,
+                       const String& suffix) {
+  if (value.length() == 0) {
+    return;
+  }
+  out += prefix;
+  out += value;
+  out += suffix;
+}
 }  // namespace
 
 RssRuntime::RssRuntime(SettingsStore& settingsStore, WifiService& wifiService)
@@ -31,6 +96,17 @@ RssRuntime::RssRuntime(SettingsStore& settingsStore, WifiService& wifiService)
       _randomEnabled(true),
       _haveCurrentItem(false),
       _showTitleNext(true),
+      _itemsSinceInterstitial(0),
+      _interstitialCursor(0),
+      _clockSynced(false),
+      _clockSyncEpoch(0),
+      _clockSyncMillis(0),
+      _lastClockSyncAttemptMs(0),
+      _weatherMessage("Weather unavailable"),
+      _weatherReady(false),
+      _pendingStartupWeather(true),
+      _weatherLastFetchMs(0),
+      _lastWeatherFetchAttemptMs(0),
       _currentSourceIndex(0),
       _currentColorIndex(0),
       _colorRotationIndex(0),
@@ -45,6 +121,7 @@ bool RssRuntime::begin() {
   }
   rebuildSources(_settingsStore.settings());
   _cacheReady = hasCachedContent();
+  _pendingStartupWeather = true;
   _nextRefreshMs = millis() + 2500;
   return true;
 }
@@ -52,6 +129,7 @@ bool RssRuntime::begin() {
 void RssRuntime::onSettingsChanged(const AppSettings& settings) {
   rebuildSources(settings);
   _cacheReady = hasCachedContent();
+  _pendingStartupWeather = true;
   resetPlayback();
   forceRefreshSoon();
 }
@@ -95,10 +173,34 @@ bool RssRuntime::refreshAllNow() {
   return success;
 }
 
+void RssRuntime::queueStartupWeather() {
+  _pendingStartupWeather = true;
+  _haveCurrentItem = false;
+  _showTitleNext = true;
+}
+
 bool RssRuntime::nextSegment(String& outText, uint8_t& outR, uint8_t& outG,
                              uint8_t& outB) {
   if (!hasEnabledSources()) {
     return false;
+  }
+
+  if (!_haveCurrentItem && _pendingStartupWeather) {
+    if (buildWeatherMessage(outText)) {
+      outR = 255;
+      outG = 195;
+      outB = 0;
+      _pendingStartupWeather = false;
+      return true;
+    }
+    _pendingStartupWeather = false;
+  }
+
+  if (!_haveCurrentItem && _itemsSinceInterstitial >= kItemsPerInterstitial) {
+    if (nextInterstitialSegment(outText, outR, outG, outB)) {
+      _itemsSinceInterstitial = 0;
+      return true;
+    }
   }
 
   if (!_haveCurrentItem && !pickNextItem()) {
@@ -120,10 +222,12 @@ bool RssRuntime::nextSegment(String& outText, uint8_t& outR, uint8_t& outG,
       outText += _currentItem.description;
       _showTitleNext = true;
       _haveCurrentItem = false;
+      markItemDisplayed();
     } else if (_currentItem.description[0] == '\0') {
       // No description available: show title only and advance item.
       _showTitleNext = true;
       _haveCurrentItem = false;
+      markItemDisplayed();
     } else {
       _showTitleNext = false;
     }
@@ -131,6 +235,7 @@ bool RssRuntime::nextSegment(String& outText, uint8_t& outR, uint8_t& outG,
     outText = _currentItem.description;
     _showTitleNext = true;
     _haveCurrentItem = false;
+    markItemDisplayed();
   }
   return true;
 }
@@ -174,6 +279,8 @@ bool RssRuntime::refreshCache() {
       _cacheReady = hasCachedContent();
       return false;
     }
+    trySyncClockFromNtp(false);
+    const bool weatherFetched = refreshWeather();
 
     bool fetchedAny = false;
     for (size_t i = 0; i < _sourceCount; i++) {
@@ -189,10 +296,10 @@ bool RssRuntime::refreshCache() {
     }
 
     _cacheReady = hasCachedContent();
-    if (fetchedAny) {
+    if (fetchedAny || weatherFetched) {
       resetPlayback();
     }
-    return fetchedAny;
+    return fetchedAny || weatherFetched;
   }
 
   if (settings.wifiSsid[0] == '\0') {
@@ -205,6 +312,8 @@ bool RssRuntime::refreshCache() {
     _cacheReady = hasCachedContent();
     return false;
   }
+  trySyncClockFromNtp(false);
+  const bool weatherFetched = refreshWeather();
 
   bool fetchedAny = false;
 
@@ -225,10 +334,10 @@ bool RssRuntime::refreshCache() {
   _wifiService.stopWifi();
   _cacheReady = hasCachedContent();
 
-  if (fetchedAny) {
+  if (fetchedAny || weatherFetched) {
     resetPlayback();
   }
-  return fetchedAny;
+  return fetchedAny || weatherFetched;
 }
 
 bool RssRuntime::pickNextItem() {
@@ -310,6 +419,7 @@ bool RssRuntime::refreshSourceWithManagedRadio(size_t sourceIndex) {
     _wifiService.stopWifi();
     return false;
   }
+  trySyncClockFromNtp(false);
 
   const bool refreshed = refreshSource(sourceIndex);
   _wifiService.stopWifi();
@@ -388,11 +498,259 @@ bool RssRuntime::pickNextItemOrdered() {
 void RssRuntime::resetPlayback() {
   _haveCurrentItem = false;
   _showTitleNext = true;
+  _itemsSinceInterstitial = 0;
+  _interstitialCursor = 0;
   _currentSourceIndex = 0;
   _currentColorIndex = 0;
   _orderedSourceIndex = 0;
   _orderedItemIndex = 0;
   memset(&_currentItem, 0, sizeof(_currentItem));
+}
+
+bool RssRuntime::nextInterstitialSegment(String& outText, uint8_t& outR,
+                                         uint8_t& outG, uint8_t& outB) {
+  const AppSettings& settings = _settingsStore.settings();
+  constexpr uint8_t kSlotCount = static_cast<uint8_t>(APP_MAX_MESSAGES + 2);
+  for (uint8_t attempt = 0; attempt < kSlotCount; attempt++) {
+    const uint8_t slot = _interstitialCursor;
+    _interstitialCursor = static_cast<uint8_t>((_interstitialCursor + 1) % kSlotCount);
+
+    if (slot == 0) {
+      if (buildTimeMessage(outText)) {
+        outR = 180;
+        outG = 235;
+        outB = 255;
+        Serial.print("[RSS] Interstitial time: ");
+        Serial.println(outText);
+        return true;
+      }
+      continue;
+    }
+
+    if (slot == 1) {
+      if (buildWeatherMessage(outText)) {
+        outR = 255;
+        outG = 195;
+        outB = 0;
+        Serial.print("[RSS] Interstitial weather: ");
+        Serial.println(outText);
+        return true;
+      }
+      continue;
+    }
+
+    const size_t msgIdx = static_cast<size_t>(slot - 2);
+    if (msgIdx >= APP_MAX_MESSAGES) {
+      continue;
+    }
+    const AppMessage& msg = settings.messages[msgIdx];
+    if (!msg.enabled || msg.text[0] == '\0') {
+      continue;
+    }
+
+    outText = msg.text;
+    outR = msg.r;
+    outG = msg.g;
+    outB = msg.b;
+    Serial.print("[RSS] Interstitial message ");
+    Serial.print(msgIdx + 1);
+    Serial.print(": ");
+    Serial.println(outText);
+    return true;
+  }
+
+  if (!buildTimeMessage(outText)) {
+    if (!buildWeatherMessage(outText)) {
+      outText = "Time unavailable";
+    }
+  }
+  outR = 180;
+  outG = 235;
+  outB = 255;
+  Serial.print("[RSS] Interstitial fallback: ");
+  Serial.println(outText);
+  return true;
+}
+
+bool RssRuntime::buildTimeMessage(String& outText) {
+  if (!_clockSynced && _wifiService.mode() == WifiRuntimeMode::StaConnected) {
+    trySyncClockFromNtp(true);
+  }
+
+  if (_clockSynced) {
+    time_t epoch = _clockSyncEpoch;
+    if (_clockSyncMillis != 0) {
+      const uint32_t elapsedMs = millis() - _clockSyncMillis;
+      epoch += static_cast<time_t>(elapsedMs / 1000UL);
+    }
+
+    struct tm tmLocal = {};
+    localtime_r(&epoch, &tmLocal);
+
+    char buf[40] = {0};
+    strftime(buf, sizeof(buf), "%a %b %d -- %H:%M", &tmLocal);
+    outText = buf;
+    outText.toUpperCase();
+    return true;
+  }
+
+  outText = "Time unavailable";
+  return true;
+}
+
+bool RssRuntime::buildWeatherMessage(String& outText) {
+  const uint32_t nowMs = millis();
+  const bool stale = !_weatherReady ||
+                     (_weatherLastFetchMs != 0 &&
+                      static_cast<uint32_t>(nowMs - _weatherLastFetchMs) >=
+                          kWeatherRefreshMs);
+  const bool retryAllowed =
+      (_lastWeatherFetchAttemptMs == 0) ||
+      (static_cast<uint32_t>(nowMs - _lastWeatherFetchAttemptMs) >= kWeatherRetryMs);
+
+  if (stale && retryAllowed) {
+    refreshWeatherWithManagedRadio();
+  }
+
+  outText = _weatherReady ? _weatherMessage : String("Weather unavailable");
+  return true;
+}
+
+bool RssRuntime::refreshWeather() {
+  if (_wifiService.mode() != WifiRuntimeMode::StaConnected) {
+    return false;
+  }
+  if (kWeatherApiUrl[0] == '\0') {
+    Serial.println("[WEATHER] APP_WEATHER_API_URL not configured");
+    return false;
+  }
+
+  _lastWeatherFetchAttemptMs = millis();
+  WiFiClientSecure client;
+  client.setInsecure();
+
+  HTTPClient http;
+  http.setTimeout(10000);
+  if (!http.begin(client, kWeatherApiUrl)) {
+    Serial.println("[WEATHER] HTTP begin failed");
+    return false;
+  }
+
+  const int status = http.GET();
+  if (status != HTTP_CODE_OK) {
+    Serial.print("[WEATHER] HTTP status ");
+    Serial.println(status);
+    http.end();
+    return false;
+  }
+
+  String payload = http.getString();
+  http.end();
+  if (payload.length() == 0) {
+    Serial.println("[WEATHER] Empty payload");
+    return false;
+  }
+
+  String city;
+  String temp;
+  String humidity;
+  String pressure;
+  String windSpeed;
+  String windDirection;
+  String clouds;
+  extractXmlAttribute(payload, "city", "name", city);
+  extractXmlAttribute(payload, "temperature", "value", temp);
+  extractXmlAttribute(payload, "humidity", "value", humidity);
+  extractXmlAttribute(payload, "pressure", "value", pressure);
+  extractXmlAttribute(payload, "speed", "value", windSpeed);
+  extractXmlAttribute(payload, "direction", "name", windDirection);
+  extractXmlAttribute(payload, "clouds", "name", clouds);
+
+  String message;
+  appendWeatherPart(message, "Weather for ", city, " Michigan ...The Prison City... ");
+  appendWeatherPart(message, "Current Tempurature: ", temp, "F ");
+  appendWeatherPart(message, "Humidity ", humidity, "% ");
+  appendWeatherPart(message, "Pressure ", pressure, " kpa ");
+  appendWeatherPart(message, "Wind ", windSpeed, " mph");
+  appendWeatherPart(message, " from the ", windDirection, "  ");
+  appendWeatherPart(message, " .... ", clouds, "....");
+
+  message.trim();
+  if (message.length() == 0) {
+    Serial.println("[WEATHER] Parse failed");
+    return false;
+  }
+
+  _weatherMessage = message;
+  _weatherReady = true;
+  _weatherLastFetchMs = millis();
+  Serial.print("[WEATHER] Updated: ");
+  Serial.println(_weatherMessage);
+  return true;
+}
+
+bool RssRuntime::refreshWeatherWithManagedRadio() {
+  if (!_radioControlEnabled) {
+    if (_wifiService.mode() != WifiRuntimeMode::StaConnected) {
+      return false;
+    }
+    return refreshWeather();
+  }
+
+  const AppSettings& settings = _settingsStore.settings();
+  if (settings.wifiSsid[0] == '\0') {
+    return false;
+  }
+
+  if (!_wifiService.connectSta(settings.wifiSsid, settings.wifiPassword, 8000, 2)) {
+    _wifiService.stopWifi();
+    return false;
+  }
+  trySyncClockFromNtp(false);
+  const bool refreshed = refreshWeather();
+  _wifiService.stopWifi();
+  return refreshed;
+}
+
+void RssRuntime::markItemDisplayed() { _itemsSinceInterstitial++; }
+
+void RssRuntime::trySyncClockFromNtp(bool force) {
+  if (_wifiService.mode() != WifiRuntimeMode::StaConnected) {
+    return;
+  }
+
+  const uint32_t nowMs = millis();
+  if (!force) {
+    if (_lastClockSyncAttemptMs != 0 &&
+        static_cast<uint32_t>(nowMs - _lastClockSyncAttemptMs) < kClockSyncRetryMs) {
+      return;
+    }
+    if (_clockSynced &&
+        static_cast<uint32_t>(nowMs - _clockSyncMillis) < kClockResyncMs) {
+      return;
+    }
+  }
+
+  _lastClockSyncAttemptMs = nowMs;
+  configTzTime(kEasternTz, kNtpServer1, kNtpServer2, kNtpServer3);
+
+  struct tm tmInfo = {};
+  if (!getLocalTime(&tmInfo, 2500)) {
+    Serial.println("[NTP] Sync failed");
+    return;
+  }
+
+  const time_t nowEpoch = time(nullptr);
+  if (nowEpoch <= 0) {
+    Serial.println("[NTP] Sync failed: invalid epoch");
+    return;
+  }
+
+  _clockSynced = true;
+  _clockSyncEpoch = nowEpoch;
+  _clockSyncMillis = millis();
+  Serial.print("[NTP] Sync ok epoch=");
+  Serial.println(static_cast<long>(_clockSyncEpoch));
 }
 
 void RssRuntime::colorForSource(size_t sourceIndex, uint8_t& outR, uint8_t& outG,

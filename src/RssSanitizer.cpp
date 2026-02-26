@@ -222,7 +222,9 @@ String utf8ToDisplayAscii(const String& input) {
 
 String sanitizeRssText(const String& input) {
   String out = stripCdata(input);
+  out = decodeEntities(out);
   out = stripHtmlTags(out);
+  // Run entity decode again in case stripping exposed nested encodings.
   out = decodeEntities(out);
   out = utf8ToDisplayAscii(out);
   out.trim();

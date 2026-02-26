@@ -5,3 +5,4 @@ _reference/
 *.bin
 *.elf
 *.map
+include/Secrets.h

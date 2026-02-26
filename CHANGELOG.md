@@ -44,6 +44,10 @@ All notable changes to this project are documented here.
 - Serial debug tracing for content scheduler starts and RSS source refresh/pick events.
 - Serial `n` command to skip/advance to next scroll item immediately.
 - Inline per-character color rendering support in scroller/display path for mixed-color sports score lines.
+- Config API route `POST /api/exit-config` and web callback wiring for UI-triggered config exit.
+- Advanced page action button: `Save + Exit Config Mode` (saves all sections, then exits config mode).
+- Encoder button input support on GPIO35 to mirror BOOT-button config mode toggle behavior.
+- Secrets template `include/Secrets.example.h` and git-ignore rule for local `include/Secrets.h`.
 
 ### Changed
 - Scroll speed now adjusts only `FastLED.delay()` timing, with default `speed=10` mapping to `0 ms`.
@@ -70,6 +74,9 @@ All notable changes to this project are documented here.
 - Sports score line format now prefers concise single-line style:
   - live/final example: `Detroit Tigers 2 at Baltimore Orioles 2  bottom of the 4th.`
   - scheduled example: `Colorado Rockies at San Francisco Giants  Thu, February 26th at 3:05 PM EST`
+- Weather API URL/key source moved from hardcoded runtime constant to `APP_WEATHER_API_URL` from local `include/Secrets.h`.
+- Interstitial cycle order is now `time, weather, message1, message2, ...` after every 6 displayed RSS/sports items.
+- Time interstitial format is now uppercase Eastern 24-hour style: `THU FEB 26 -- 15:48`.
 
 ### Fixed
 - Resolved lack of noticeable speed impact by widening delay profile and enforcing top speed delay `0 ms`.
@@ -92,3 +99,5 @@ All notable changes to this project are documented here.
 - Future/scheduled games now suppress placeholder `0 at 0` scores when status/detail indicates a scheduled start time.
 - Winning score now renders green and losing score red for non-tied scored games.
 - RSS base message color now rotates per item instead of staying fixed to source index.
+- Fixed startup sequencing where weather-first playback could be consumed before loading-mode completed; weather is now re-queued immediately after boot refresh transition.
+- Fixed Eastern time display mismatch (`UTC` suffix/offset confusion) by switching to timezone-aware NTP sync via `configTzTime`.

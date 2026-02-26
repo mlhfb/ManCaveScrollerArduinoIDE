@@ -2,6 +2,7 @@
 #define RSS_RUNTIME_H
 
 #include <Arduino.h>
+#include <time.h>
 
 #include "AppTypes.h"
 #include "RssCache.h"
@@ -24,6 +25,7 @@ public:
   bool hasCachedContent() const;
   bool cacheReady() const;
   bool refreshAllNow();
+  void queueStartupWeather();
 
   bool nextSegment(String& outText, uint8_t& outR, uint8_t& outG,
                    uint8_t& outB);
@@ -44,6 +46,14 @@ private:
   bool refreshSourceWithManagedRadio(size_t sourceIndex);
   bool pickNextItem();
   bool pickNextItemOrdered();
+  bool nextInterstitialSegment(String& outText, uint8_t& outR, uint8_t& outG,
+                               uint8_t& outB);
+  bool buildTimeMessage(String& outText);
+  bool buildWeatherMessage(String& outText);
+  bool refreshWeather();
+  bool refreshWeatherWithManagedRadio();
+  void markItemDisplayed();
+  void trySyncClockFromNtp(bool force);
   void resetPlayback();
   void colorForSource(size_t sourceIndex, uint8_t& outR, uint8_t& outG,
                       uint8_t& outB) const;
@@ -63,6 +73,17 @@ private:
   bool _randomEnabled;
   bool _haveCurrentItem;
   bool _showTitleNext;
+  uint32_t _itemsSinceInterstitial;
+  uint8_t _interstitialCursor;
+  bool _clockSynced;
+  time_t _clockSyncEpoch;
+  uint32_t _clockSyncMillis;
+  uint32_t _lastClockSyncAttemptMs;
+  String _weatherMessage;
+  bool _weatherReady;
+  bool _pendingStartupWeather;
+  uint32_t _weatherLastFetchMs;
+  uint32_t _lastWeatherFetchAttemptMs;
   size_t _currentSourceIndex;
   uint8_t _currentColorIndex;
   uint8_t _colorRotationIndex;
