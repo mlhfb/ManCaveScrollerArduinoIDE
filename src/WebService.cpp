@@ -67,6 +67,10 @@ void WebService::setRssRuntime(RssRuntime* rssRuntime) { _rssRuntime = rssRuntim
 
 void WebService::registerRoutes() {
   _server->on("/", HTTP_GET, [this]() { handleRoot(); });
+  _server->on("/favicon.ico", HTTP_GET, [this]() { _server->send(204, "text/plain", ""); });
+  _server->on("/generate_204", HTTP_GET, [this]() { handleRoot(); });
+  _server->on("/hotspot-detect.html", HTTP_GET, [this]() { handleRoot(); });
+  _server->on("/ncsi.txt", HTTP_GET, [this]() { _server->send(200, "text/plain", "Microsoft NCSI"); });
   _server->on("/api/status", HTTP_GET, [this]() { handleStatus(); });
   _server->on("/api/messages", HTTP_POST, [this]() { handleMessages(); });
   _server->on("/api/text", HTTP_POST, [this]() { handleText(); });
@@ -341,12 +345,22 @@ void WebService::handleRss() {
 
   AppSettings& s = _store.mutableSettings();
   if (!doc["enabled"].isNull()) s.rssEnabled = doc["enabled"] | s.rssEnabled;
+  if (!doc["rss_enabled"].isNull()) s.rssEnabled = doc["rss_enabled"] | s.rssEnabled;
+
   if (!doc["url"].isNull()) strlcpy(s.rssUrl, doc["url"] | s.rssUrl, sizeof(s.rssUrl));
+  if (!doc["rss_url"].isNull()) strlcpy(s.rssUrl, doc["rss_url"] | s.rssUrl, sizeof(s.rssUrl));
+
   if (!doc["npr_enabled"].isNull()) s.rssNprEnabled = doc["npr_enabled"] | s.rssNprEnabled;
+  if (!doc["rss_npr_enabled"].isNull()) s.rssNprEnabled = doc["rss_npr_enabled"] | s.rssNprEnabled;
+
   if (!doc["sports_enabled"].isNull()) s.rssSportsEnabled = doc["sports_enabled"] | s.rssSportsEnabled;
+  if (!doc["rss_sports_enabled"].isNull()) s.rssSportsEnabled = doc["rss_sports_enabled"] | s.rssSportsEnabled;
+
   if (!doc["sports_base_url"].isNull()) {
-    strlcpy(s.rssSportsBaseUrl, doc["sports_base_url"] | s.rssSportsBaseUrl,
-            sizeof(s.rssSportsBaseUrl));
+    strlcpy(s.rssSportsBaseUrl, doc["sports_base_url"] | s.rssSportsBaseUrl, sizeof(s.rssSportsBaseUrl));
+  }
+  if (!doc["rss_sports_base_url"].isNull()) {
+    strlcpy(s.rssSportsBaseUrl, doc["rss_sports_base_url"] | s.rssSportsBaseUrl, sizeof(s.rssSportsBaseUrl));
   }
 
   JsonObject sports = doc["sports"].as<JsonObject>();
@@ -359,7 +373,17 @@ void WebService::handleRss() {
     if (!sports["big10"].isNull()) s.rssSportBig10Enabled = sports["big10"] | s.rssSportBig10Enabled;
   }
 
-  _store.save();
+  if (!doc["rss_sport_mlb_enabled"].isNull()) s.rssSportMlbEnabled = doc["rss_sport_mlb_enabled"] | s.rssSportMlbEnabled;
+  if (!doc["rss_sport_nhl_enabled"].isNull()) s.rssSportNhlEnabled = doc["rss_sport_nhl_enabled"] | s.rssSportNhlEnabled;
+  if (!doc["rss_sport_ncaaf_enabled"].isNull()) s.rssSportNcaafEnabled = doc["rss_sport_ncaaf_enabled"] | s.rssSportNcaafEnabled;
+  if (!doc["rss_sport_nfl_enabled"].isNull()) s.rssSportNflEnabled = doc["rss_sport_nfl_enabled"] | s.rssSportNflEnabled;
+  if (!doc["rss_sport_nba_enabled"].isNull()) s.rssSportNbaEnabled = doc["rss_sport_nba_enabled"] | s.rssSportNbaEnabled;
+  if (!doc["rss_sport_big10_enabled"].isNull()) s.rssSportBig10Enabled = doc["rss_sport_big10_enabled"] | s.rssSportBig10Enabled;
+
+  if (!_store.save()) {
+    sendError("Failed to persist RSS settings", 500);
+    return;
+  }
   if (_onSettingsChanged) _onSettingsChanged(s);
   sendStatusMessage("RSS settings updated");
 }

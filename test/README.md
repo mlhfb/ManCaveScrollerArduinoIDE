@@ -16,3 +16,4 @@ Current status:
 - Stability regression check: exit config mode and verify no `loopTask` stack overflow during RSS refresh.
 - Smoothness regression check: outside config mode verify scrolling remains smooth with WiFi/web tasks suspended.
 - Config-mode reachability check: entering config mode should keep web page reachable and scroller should show mode/SSID/IP.
+- RSS save regression check: enable sports selections + base URL, save, reload status, verify fields persist.

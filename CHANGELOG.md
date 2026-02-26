@@ -56,3 +56,6 @@ All notable changes to this project are documented here.
 - Reduced repeated LittleFS open errors for missing cache files by checking file existence before opening.
 - Removed per-frame cache filesystem checks from auto mode arbitration path to reduce scroll jitter.
 - Fixed config-mode web reachability regression by preventing RSS refresh logic from cycling WiFi radio while config mode is active.
+- Fixed RSS/sports settings reliability in web UI by preventing periodic status polling from overwriting unsaved form edits.
+- Added compatibility in `/api/rss` handler for both compact and `rss_*` key naming variants and explicit save-failure response.
+- Added handlers for common probe routes (`/favicon.ico`, `/generate_204`, `/hotspot-detect.html`, `/ncsi.txt`) to reduce spurious `request handler not found` errors.

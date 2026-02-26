@@ -38,6 +38,7 @@ Current status: Phase 9 implementation baseline is buildable (`pio run`, `pio ru
   - advanced panel settings
   - RSS + sports source configuration
   - factory reset confirmation
+  - non-destructive status refresh loop (does not overwrite unsaved form edits while configuring)
 - Serial test controls:
   - Brightness: `u` (up), `d` (down)
   - Speed (delay only): `f` (faster), `s` (slower), `1..9` and `0` for exact speed 1..10

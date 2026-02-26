@@ -100,3 +100,5 @@
 - 2026-02-26: Reduced missing-cache file spam by checking cache file existence before open.
 - 2026-02-26: Optimized runtime for smoother scrolling by suspending WiFi/web/RSS refresh outside config mode; config mode still runs scrolling + WiFi simultaneously.
 - 2026-02-26: Config-mode prompt now displays mode, SSID, and IP; RSS runtime no longer cycles WiFi radio during config mode.
+- 2026-02-26: Fixed sports/RSS save UX issue by stopping background status polling from overwriting unsaved form edits.
+- 2026-02-26: Added API probe/fallback routes and `/api/rss` key-compatibility handling.

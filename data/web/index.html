@@ -430,6 +430,7 @@
         };
         const result = await callApi("/api/rss", "POST", payload);
         setStatus(result.status || "RSS settings updated", true);
+        await loadStatus(true);
       } catch (err) {
         setStatus("Save RSS failed: " + err.message, false);
       }
@@ -447,37 +448,39 @@
       }
     }
 
-    async function loadStatus() {
+    async function loadStatus(applyFormValues = true) {
       try {
         const status = await callApi("/api/status", "GET");
-        messages = Array.isArray(status.messages) ? status.messages : [];
-        while (messages.length < 5) {
-          messages.push({ text: "", r: 255, g: 255, b: 255, enabled: false });
+        if (applyFormValues) {
+          messages = Array.isArray(status.messages) ? status.messages : [];
+          while (messages.length < 5) {
+            messages.push({ text: "", r: 255, g: 255, b: 255, enabled: false });
+          }
+
+          g("speed").value = status.speed ?? 10;
+          g("speedVal").textContent = status.speed ?? 10;
+          g("brightness").value = status.brightness ?? 72;
+          g("brightVal").textContent = status.brightness ?? 72;
+          g("ssid").value = status.wifi_ssid ?? "";
+          g("password").value = status.wifi_password ?? "";
+          g("panelCols").value = status.panel_cols ?? 128;
+
+          g("rssEnabled").checked = !!status.rss_enabled;
+          g("nprEnabled").checked = status.rss_npr_enabled !== false;
+          g("rssUrl").value = status.rss_url ?? "";
+          g("sportsEnabled").checked = !!status.rss_sports_enabled;
+          g("sportsBaseUrl").value = status.rss_sports_base_url ?? "";
+
+          const sports = status.rss_sports || {};
+          g("sportMlb").checked = sports.mlb !== false;
+          g("sportNhl").checked = sports.nhl !== false;
+          g("sportNcaaf").checked = sports.ncaaf !== false;
+          g("sportNfl").checked = sports.nfl !== false;
+          g("sportNba").checked = sports.nba !== false;
+          g("sportBig10").checked = sports.big10 !== false;
+
+          renderMessagePreview();
         }
-
-        g("speed").value = status.speed ?? 10;
-        g("speedVal").textContent = status.speed ?? 10;
-        g("brightness").value = status.brightness ?? 72;
-        g("brightVal").textContent = status.brightness ?? 72;
-        g("ssid").value = status.wifi_ssid ?? "";
-        g("password").value = status.wifi_password ?? "";
-        g("panelCols").value = status.panel_cols ?? 128;
-
-        g("rssEnabled").checked = !!status.rss_enabled;
-        g("nprEnabled").checked = status.rss_npr_enabled !== false;
-        g("rssUrl").value = status.rss_url ?? "";
-        g("sportsEnabled").checked = !!status.rss_sports_enabled;
-        g("sportsBaseUrl").value = status.rss_sports_base_url ?? "";
-
-        const sports = status.rss_sports || {};
-        g("sportMlb").checked = sports.mlb !== false;
-        g("sportNhl").checked = sports.nhl !== false;
-        g("sportNcaaf").checked = sports.ncaaf !== false;
-        g("sportNfl").checked = sports.nfl !== false;
-        g("sportNba").checked = sports.nba !== false;
-        g("sportBig10").checked = sports.big10 !== false;
-
-        renderMessagePreview();
         renderRssCacheStatus(status);
         setStatus("WiFi: " + (status.wifi_mode || "Unknown") + " | IP: " + (status.ip || "0.0.0.0"), true);
       } catch (err) {
@@ -486,7 +489,7 @@
     }
 
     loadStatus();
-    setInterval(loadStatus, 7000);
+    setInterval(() => loadStatus(false), 7000);
   </script>
 </body>
 </html>

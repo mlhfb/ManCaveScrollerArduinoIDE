@@ -67,6 +67,10 @@ Implement and maintain:
 - `POST /api/rss`
 - `POST /api/factory-reset`
 
+Web server robustness:
+- Handle common captive/probe paths gracefully to avoid noisy not-found logs.
+- `/api/rss` should accept both compact keys (`enabled`, `sports_enabled`, etc.) and explicit `rss_*` keys for compatibility.
+
 ## Display/Smoothness Requirements
 - Use Arduino `loop()` with FastLED-driven render cadence (`FastLED.show()`).
 - Use simple scroll position stepping tuned for smooth visual motion.
