@@ -149,6 +149,7 @@ void WebService::handleStatus() const {
   doc["rss_enabled"] = s.rssEnabled;
   doc["rss_url"] = s.rssUrl;
   doc["rss_npr_enabled"] = s.rssNprEnabled;
+  doc["rss_random_enabled"] = s.rssRandomEnabled;
   doc["rss_sports_enabled"] = s.rssSportsEnabled;
   doc["rss_sports_base_url"] = s.rssSportsBaseUrl;
   JsonObject sports = doc.createNestedObject("rss_sports");
@@ -352,6 +353,8 @@ void WebService::handleRss() {
 
   if (!doc["npr_enabled"].isNull()) s.rssNprEnabled = doc["npr_enabled"] | s.rssNprEnabled;
   if (!doc["rss_npr_enabled"].isNull()) s.rssNprEnabled = doc["rss_npr_enabled"] | s.rssNprEnabled;
+  if (!doc["random_enabled"].isNull()) s.rssRandomEnabled = doc["random_enabled"] | s.rssRandomEnabled;
+  if (!doc["rss_random_enabled"].isNull()) s.rssRandomEnabled = doc["rss_random_enabled"] | s.rssRandomEnabled;
 
   if (!doc["sports_enabled"].isNull()) s.rssSportsEnabled = doc["sports_enabled"] | s.rssSportsEnabled;
   if (!doc["rss_sports_enabled"].isNull()) s.rssSportsEnabled = doc["rss_sports_enabled"] | s.rssSportsEnabled;

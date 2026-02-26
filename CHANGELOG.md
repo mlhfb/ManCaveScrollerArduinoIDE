@@ -47,6 +47,10 @@ All notable changes to this project are documented here.
   - outside config mode: WiFi/web/RSS refresh work is suspended for max scroll smoothness
   - inside config mode: scrolling and WiFi/web run simultaneously
 - Config-mode prompt text now includes current mode + SSID + IP address for discoverability.
+- Added selectable RSS playback mode in config UI:
+  - `Random item order` enabled: no-repeat random selection across enabled sources
+  - `Random item order` disabled: deterministic source-order traversal with ordered item playback
+- Ordered mode now refreshes each source at source-cycle start (when connected in config mode) before scrolling its items, matching rssArduinoPlatform-style behavior.
 
 ### Fixed
 - Resolved lack of noticeable speed impact by widening delay profile and enforcing top speed delay `0 ms`.

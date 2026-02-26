@@ -20,3 +20,4 @@ Documentation note:
 - Runtime policy: outside config mode the firmware prioritizes scrolling and suspends WiFi/web refresh work.
 - In config mode the scroller prompt includes mode/SSID/IP so users can reach the hosted page.
 - Web UI polling refreshes status without overwriting unsaved config form values.
+- Advanced UI now includes RSS playback mode toggle (`Random item order`).

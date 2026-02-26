@@ -59,6 +59,7 @@ void SettingsStore::loadDefaults() {
   _settings.rssEnabled = true;
   safeCopy(_settings.rssUrl, sizeof(_settings.rssUrl), "https://feeds.npr.org/1001/rss.xml");
   _settings.rssNprEnabled = true;
+  _settings.rssRandomEnabled = true;
   _settings.rssSportsEnabled = false;
   _settings.rssSportsBaseUrl[0] = '\0';
   _settings.rssSportMlbEnabled = true;
@@ -170,6 +171,7 @@ bool SettingsStore::load() {
   _settings.rssEnabled = doc["rss_enabled"] | defaults.rssEnabled;
   safeCopy(_settings.rssUrl, sizeof(_settings.rssUrl), doc["rss_url"] | defaults.rssUrl);
   _settings.rssNprEnabled = doc["rss_npr_enabled"] | defaults.rssNprEnabled;
+  _settings.rssRandomEnabled = doc["rss_random_enabled"] | defaults.rssRandomEnabled;
   _settings.rssSportsEnabled =
       doc["rss_sports_enabled"] | defaults.rssSportsEnabled;
   safeCopy(_settings.rssSportsBaseUrl, sizeof(_settings.rssSportsBaseUrl),
@@ -216,6 +218,7 @@ bool SettingsStore::save() const {
   doc["rss_enabled"] = _settings.rssEnabled;
   doc["rss_url"] = _settings.rssUrl;
   doc["rss_npr_enabled"] = _settings.rssNprEnabled;
+  doc["rss_random_enabled"] = _settings.rssRandomEnabled;
   doc["rss_sports_enabled"] = _settings.rssSportsEnabled;
   doc["rss_sports_base_url"] = _settings.rssSportsBaseUrl;
   doc["rss_sport_mlb_enabled"] = _settings.rssSportMlbEnabled;

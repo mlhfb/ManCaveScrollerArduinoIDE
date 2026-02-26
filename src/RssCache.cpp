@@ -159,6 +159,33 @@ bool RssCache::metadata(const char* sourceUrl,
   return true;
 }
 
+bool RssCache::itemCount(const char* sourceUrl, uint32_t& outCount) const {
+  outCount = 0;
+  CacheHeader header = {};
+  if (!readHeader(sourceUrl, header)) {
+    return false;
+  }
+  outCount = header.itemCount;
+  return true;
+}
+
+bool RssCache::loadItem(const char* sourceUrl, uint32_t itemIndex,
+                        RssItem& outItem) const {
+  CacheRecord record = {};
+  if (!readRecord(sourceUrl, itemIndex, record)) {
+    return false;
+  }
+
+  memset(&outItem, 0, sizeof(outItem));
+  strlcpy(outItem.title, record.title, sizeof(outItem.title));
+  strlcpy(outItem.description, record.description, sizeof(outItem.description));
+  outItem.flags = record.flags;
+  if (outItem.flags == RssItemFlagNone) {
+    outItem.flags = inferItemFlags(outItem);
+  }
+  return true;
+}
+
 bool RssCache::pickRandomItemNoRepeat(const RssSource* sources, size_t sourceCount,
                                       RssItem& outItem, size_t& outSourceIndex,
                                       bool& outCycleReset, uint8_t* outFlags) {

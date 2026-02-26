@@ -202,6 +202,7 @@
 
       <label><input id="rssEnabled" type="checkbox"> Enable RSS</label>
       <label><input id="nprEnabled" type="checkbox"> Enable NPR source</label>
+      <label><input id="randomEnabled" type="checkbox" checked> Random item order</label>
       <label for="rssUrl">NPR URL</label>
       <input id="rssUrl" type="text" placeholder="https://feeds.npr.org/1001/rss.xml">
 
@@ -423,6 +424,7 @@
         const payload = {
           enabled: g("rssEnabled").checked,
           npr_enabled: g("nprEnabled").checked,
+          random_enabled: g("randomEnabled").checked,
           url: g("rssUrl").value.trim(),
           sports_enabled: g("sportsEnabled").checked,
           sports_base_url: g("sportsBaseUrl").value.trim(),
@@ -467,6 +469,7 @@
 
           g("rssEnabled").checked = !!status.rss_enabled;
           g("nprEnabled").checked = status.rss_npr_enabled !== false;
+          g("randomEnabled").checked = status.rss_random_enabled !== false;
           g("rssUrl").value = status.rss_url ?? "";
           g("sportsEnabled").checked = !!status.rss_sports_enabled;
           g("sportsBaseUrl").value = status.rss_sports_base_url ?? "";

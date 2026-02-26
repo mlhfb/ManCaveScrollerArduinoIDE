@@ -30,6 +30,10 @@ Current status: Phase 9 implementation baseline is buildable (`pio run`, `pio ru
   - non-repeating random picker across enabled sources until cycle exhaustion
   - periodic refresh schedule (15 min) with retry interval (60 sec) on failures (config mode runtime)
   - `LIVE` flag inference hook for sports hot-list prioritization
+  - selectable playback mode:
+    - random mode (default): no-repeat random across enabled sources
+    - ordered mode: iterate sources in configured UI order and items in source order
+  - ordered mode refreshes each source at source-cycle start in config-mode/connected runtime
 - Web API: endpoint contract implemented (`/api/status`, messages/text/color, speed/brightness/appearance, wifi, advanced, rss, factory-reset), including `rss_source_count` + `rss_sources[]` cache metadata in status.
 - Web UI served from LittleFS (`/web/index.html`) for full setup:
   - message editing (5 slots)
@@ -105,6 +109,7 @@ Create a new version of the scroller that:
 `GET /api/status` additionally reports:
 - `rss_source_count`
 - `rss_sources[]` with `name`, `url`, `enabled`, `cache_valid`, `cache_item_count`, `cache_updated_epoch`
+- `rss_random_enabled`
 
 ## Architecture
 - `main.cpp` orchestrator only (state machine driven)

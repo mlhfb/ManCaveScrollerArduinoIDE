@@ -21,6 +21,8 @@ public:
              size_t itemCount);
   bool hasItems(const char* sourceUrl) const;
   bool metadata(const char* sourceUrl, RssCacheMetadata& outMetadata) const;
+  bool itemCount(const char* sourceUrl, uint32_t& outCount) const;
+  bool loadItem(const char* sourceUrl, uint32_t itemIndex, RssItem& outItem) const;
 
   bool pickRandomItemNoRepeat(const RssSource* sources, size_t sourceCount,
                               RssItem& outItem, size_t& outSourceIndex,

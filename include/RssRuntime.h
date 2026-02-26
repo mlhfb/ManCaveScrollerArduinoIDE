@@ -39,7 +39,9 @@ private:
   void scheduleNextRefresh(bool success);
   void rebuildSources(const AppSettings& settings);
   bool refreshCache();
+  bool refreshSource(size_t sourceIndex);
   bool pickNextItem();
+  bool pickNextItemOrdered();
   void resetPlayback();
   void colorForSource(size_t sourceIndex, uint8_t& outR, uint8_t& outG,
                       uint8_t& outB) const;
@@ -56,9 +58,12 @@ private:
   uint32_t _nextRefreshMs;
 
   bool _cacheReady;
+  bool _randomEnabled;
   bool _haveCurrentItem;
   bool _showTitleNext;
   size_t _currentSourceIndex;
+  size_t _orderedSourceIndex;
+  uint32_t _orderedItemIndex;
   RssItem _currentItem;
   RssItem _fetchItems[APP_MAX_RSS_ITEMS];
 };

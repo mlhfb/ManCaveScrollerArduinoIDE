@@ -37,6 +37,7 @@ struct AppSettings {
   bool rssEnabled;
   char rssUrl[APP_MAX_URL_LEN + 1];
   bool rssNprEnabled;
+  bool rssRandomEnabled;
   bool rssSportsEnabled;
   char rssSportsBaseUrl[APP_MAX_URL_LEN + 1];
   bool rssSportMlbEnabled;

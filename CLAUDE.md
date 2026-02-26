@@ -70,6 +70,7 @@ Implement and maintain:
 Web server robustness:
 - Handle common captive/probe paths gracefully to avoid noisy not-found logs.
 - `/api/rss` should accept both compact keys (`enabled`, `sports_enabled`, etc.) and explicit `rss_*` keys for compatibility.
+- `/api/rss` includes `random_enabled` / `rss_random_enabled` playback mode toggle.
 
 ## Display/Smoothness Requirements
 - Use Arduino `loop()` with FastLED-driven render cadence (`FastLED.show()`).
@@ -105,3 +106,6 @@ Web server robustness:
   - random no-repeat playback pool across enabled cached sources
   - `LIVE` flag inference hook for future source prioritization
 - `/api/status` includes `rss_source_count` and `rss_sources[]` cache metadata.
+- RSS playback mode is selectable:
+  - random no-repeat mode
+  - ordered source/item mode with per-source refresh before cycle (connected config runtime)

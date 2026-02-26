@@ -28,9 +28,12 @@ RssRuntime::RssRuntime(SettingsStore& settingsStore, WifiService& wifiService)
       _radioControlEnabled(true),
       _nextRefreshMs(0),
       _cacheReady(false),
+      _randomEnabled(true),
       _haveCurrentItem(false),
       _showTitleNext(true),
       _currentSourceIndex(0),
+      _orderedSourceIndex(0),
+      _orderedItemIndex(0),
       _currentItem{},
       _fetchItems{} {}
 
@@ -129,6 +132,7 @@ void RssRuntime::scheduleNextRefresh(bool success) {
 
 void RssRuntime::rebuildSources(const AppSettings& settings) {
   _sourceCount = buildRssSources(settings, _sources, APP_MAX_RSS_SOURCES);
+  _randomEnabled = settings.rssRandomEnabled;
 }
 
 bool RssRuntime::refreshCache() {
@@ -203,6 +207,10 @@ bool RssRuntime::refreshCache() {
 }
 
 bool RssRuntime::pickNextItem() {
+  if (!_randomEnabled) {
+    return pickNextItemOrdered();
+  }
+
   bool cycleReset = false;
   size_t sourceIndex = 0;
   RssItem item = {};
@@ -223,10 +231,85 @@ bool RssRuntime::pickNextItem() {
   return true;
 }
 
+bool RssRuntime::refreshSource(size_t sourceIndex) {
+  if (sourceIndex >= _sourceCount) {
+    return false;
+  }
+
+  const RssFetchResult result = _fetcher.fetch(
+      _sources[sourceIndex].url, _fetchItems, APP_MAX_RSS_ITEMS, 3, 10000, 750);
+  if (!result.success || result.itemCount == 0) {
+    return false;
+  }
+  return _cache.store(_sources[sourceIndex].url, _sources[sourceIndex].name,
+                      _fetchItems, result.itemCount);
+}
+
+bool RssRuntime::pickNextItemOrdered() {
+  if (_sourceCount == 0) {
+    return false;
+  }
+
+  size_t sourceAttempts = 0;
+  while (sourceAttempts < _sourceCount) {
+    if (_orderedSourceIndex >= _sourceCount) {
+      _orderedSourceIndex = 0;
+    }
+    const size_t sourceIndex = _orderedSourceIndex;
+
+    // Mimic rssArduinoPlatform behavior: refresh selected source right before use
+    // when we are at the start of its cycle and currently connected in config mode.
+    if (_orderedItemIndex == 0 && !_radioControlEnabled &&
+        _wifiService.mode() == WifiRuntimeMode::StaConnected) {
+      refreshSource(sourceIndex);
+    }
+
+    uint32_t count = 0;
+    if (!_cache.itemCount(_sources[sourceIndex].url, count) || count == 0) {
+      _orderedSourceIndex = (_orderedSourceIndex + 1) % _sourceCount;
+      _orderedItemIndex = 0;
+      sourceAttempts++;
+      continue;
+    }
+
+    if (_orderedItemIndex >= count) {
+      _orderedSourceIndex = (_orderedSourceIndex + 1) % _sourceCount;
+      _orderedItemIndex = 0;
+      sourceAttempts++;
+      continue;
+    }
+
+    RssItem item = {};
+    if (!_cache.loadItem(_sources[sourceIndex].url, _orderedItemIndex, item)) {
+      _orderedSourceIndex = (_orderedSourceIndex + 1) % _sourceCount;
+      _orderedItemIndex = 0;
+      sourceAttempts++;
+      continue;
+    }
+
+    _currentItem = item;
+    _currentSourceIndex = sourceIndex;
+    _haveCurrentItem = true;
+    _showTitleNext = true;
+
+    _orderedItemIndex++;
+    if (_orderedItemIndex >= count) {
+      _orderedSourceIndex = (_orderedSourceIndex + 1) % _sourceCount;
+      _orderedItemIndex = 0;
+    }
+    return true;
+  }
+
+  _cacheReady = hasCachedContent();
+  return false;
+}
+
 void RssRuntime::resetPlayback() {
   _haveCurrentItem = false;
   _showTitleNext = true;
   _currentSourceIndex = 0;
+  _orderedSourceIndex = 0;
+  _orderedItemIndex = 0;
   memset(&_currentItem, 0, sizeof(_currentItem));
 }
 

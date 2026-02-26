@@ -17,3 +17,6 @@ Current status:
 - Smoothness regression check: outside config mode verify scrolling remains smooth with WiFi/web tasks suspended.
 - Config-mode reachability check: entering config mode should keep web page reachable and scroller should show mode/SSID/IP.
 - RSS save regression check: enable sports selections + base URL, save, reload status, verify fields persist.
+- RSS playback mode check:
+- random mode: verify non-repeat randomized source/item order
+- ordered mode: verify source traversal in UI order (`mlb, nhl, ncaaf, nfl, nba, big10`) and in-order item playback.
