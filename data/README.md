@@ -20,5 +20,6 @@ Documentation note:
 - Runtime policy: outside config mode the firmware prioritizes scrolling and suspends WiFi/web refresh work.
 - In config mode the scroller prompt includes mode/SSID/IP so users can reach the hosted page.
 - Web UI polling refreshes status without overwriting unsaved config form values.
-- Advanced UI now includes RSS playback mode toggle (`Random item order`).
-- Random toggle label clarified in UI and ordered mode semantics documented in-page.
+- Advanced UI includes RSS playback randomization toggle under `Playback Order`.
+- Current page stamp: `UI build: 2026-02-26`.
+- If browser still shows an older UI (missing playback toggle), re-run `pio run -t uploadfs` and hard-refresh browser cache.

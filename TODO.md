@@ -73,6 +73,7 @@
 - [x] Add no-repeat random picker across enabled cached sources until cycle exhaustion.
 - [x] Add item flags hook (`LIVE`) for future hot-list prioritization.
 - [x] Schedule periodic refresh and retry interval when feeds fail.
+- [x] On cold boot with configured RSS + WiFi, fetch fresh RSS/sports content before normal playback while scrolling a loading prompt.
 
 ## 9) UI/UX Implementation
 - [x] Build lightweight web UI for:
@@ -105,3 +106,6 @@
 - 2026-02-26: Added selectable RSS playback mode (`random` vs `ordered`) in UI/API/settings.
 - 2026-02-26: Ordered mode now traverses configured source order and refreshes each source before its item cycle both in config mode and in non-config mode (radio on/off per source cycle).
 - 2026-02-26: RSS items with empty descriptions now display title only.
+- 2026-02-26: Cold boot now starts a background refresh task; display scrolls `Now Loading...` until refresh completes, then transitions on cycle boundary.
+- 2026-02-26: Web UI advanced section now labels playback order more explicitly and includes UI build stamp for cache/version checks.
+- 2026-02-26: Web root now sends no-cache headers to reduce stale UI asset behavior.

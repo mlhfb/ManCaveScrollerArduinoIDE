@@ -3,6 +3,7 @@
 Repository for a clean Arduino-framework rewrite of ManCaveScroller on ESP32.
 
 Current status: Phase 9 implementation baseline is buildable (`pio run`, `pio run -t buildfs`).
+After web UI changes, run `pio run -t uploadfs` so the device serves the updated `data/web/index.html`.
 
 ## Current Firmware Status
 - Display pipeline: `FastLED` + `FastLED_NeoMatrix` on ESP32 Arduino.
@@ -19,6 +20,8 @@ Current status: Phase 9 implementation baseline is buildable (`pio run`, `pio ru
   - WiFi radio off during normal scrolling mode to reduce artifacts
   - Outside config mode, runtime suspends WiFi/web/RSS refresh tasks and prioritizes scroll output
   - In config mode, scrolling remains active while WiFi/web/API run simultaneously
+  - On cold boot with configured WiFi+RSS, runtime starts immediate refresh while scrolling `Now Loading...`
+  - After boot refresh completes, mode switch waits for current loading scroll cycle completion
   - Config prompt now scrolls active mode plus network details (`SSID` and `IP`)
 - RSS fetch/parsing/sanitization:
   - HTTPS fetch with retry/backoff and timeout
@@ -44,8 +47,10 @@ Current status: Phase 9 implementation baseline is buildable (`pio run`, `pio ru
   - WiFi credentials
   - advanced panel settings
   - RSS + sports source configuration
+  - playback-order randomization toggle (`Randomize RSS/sports item order (shuffle)`)
   - factory reset confirmation
   - non-destructive status refresh loop (does not overwrite unsaved form edits while configuring)
+  - UI build stamp and no-cache root response headers to reduce stale page confusion
 - Serial test controls:
   - Brightness: `u` (up), `d` (down)
   - Speed (delay only): `f` (faster), `s` (slower), `1..9` and `0` for exact speed 1..10

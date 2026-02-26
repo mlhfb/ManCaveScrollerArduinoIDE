@@ -13,6 +13,10 @@
 namespace {
 constexpr uint8_t kConfigButtonPin = 0;  // BOOT button on ESP32 DevKit
 constexpr uint32_t kButtonDebounceMs = 250;
+constexpr uint32_t kConfigPromptRefreshMs = 2000;
+constexpr uint32_t kBootRefreshTaskStackWords = 6144;
+constexpr BaseType_t kBootRefreshTaskPriority = 1;
+constexpr const char* kBootLoadingText = "Now Loading...";
 }
 
 SettingsStore gSettingsStore;
@@ -36,6 +40,21 @@ uint32_t gLastConfigPromptMs = 0;
 
 bool gLastButtonState = true;
 uint32_t gLastButtonChangeMs = 0;
+
+bool gBootLoadingMode = false;
+volatile bool gBootRefreshComplete = false;
+volatile bool gBootRefreshSuccess = false;
+TaskHandle_t gBootRefreshTaskHandle = nullptr;
+
+void printStatus();
+
+void bootRefreshTask(void* /*param*/) {
+  const bool refreshed = gRssRuntime.refreshAllNow();
+  gBootRefreshSuccess = refreshed;
+  gBootRefreshComplete = true;
+  gBootRefreshTaskHandle = nullptr;
+  vTaskDelete(nullptr);
+}
 
 void syncSchedulerMessagesFromSettings() {
   const AppSettings& settings = gSettingsStore.settings();
@@ -67,6 +86,13 @@ bool shouldUseRssPlayback() {
 }
 
 void applySchedulerMode() {
+  if (gBootLoadingMode) {
+    if (gScheduler.mode() != ContentMode::ConfigPrompt) {
+      gScheduler.setMode(ContentMode::ConfigPrompt);
+    }
+    return;
+  }
+
   if (gConfigMode) {
     if (gScheduler.mode() != ContentMode::ConfigPrompt) {
       gScheduler.setMode(ContentMode::ConfigPrompt);
@@ -122,6 +148,59 @@ void applyRuntimeFromSettings(const AppSettings& settings) {
   syncSchedulerMessagesFromSettings();
   gRssRuntime.onSettingsChanged(settings);
   applySchedulerMode();
+}
+
+bool shouldRunBootRefresh() {
+  const AppSettings& settings = gSettingsStore.settings();
+  if (settings.wifiSsid[0] == '\0') {
+    return false;
+  }
+  if (!settings.rssEnabled) {
+    return false;
+  }
+  return gRssRuntime.hasEnabledSources();
+}
+
+void beginBootLoadingRefresh() {
+  if (!shouldRunBootRefresh()) {
+    gBootLoadingMode = false;
+    return;
+  }
+
+  gBootLoadingMode = true;
+  gBootRefreshComplete = false;
+  gBootRefreshSuccess = false;
+  gScheduler.setConfigPromptText(kBootLoadingText);
+  applySchedulerMode();
+
+  if (xTaskCreatePinnedToCore(bootRefreshTask, "boot_refresh",
+                              kBootRefreshTaskStackWords, nullptr,
+                              kBootRefreshTaskPriority, &gBootRefreshTaskHandle,
+                              tskNO_AFFINITY) != pdPASS) {
+    gBootLoadingMode = false;
+    gBootRefreshComplete = true;
+    gBootRefreshSuccess = false;
+    gBootRefreshTaskHandle = nullptr;
+    gScheduler.setConfigPromptText("Config mode active");
+    applySchedulerMode();
+    Serial.println("Boot refresh task start failed");
+    return;
+  }
+
+  Serial.println("Boot refresh started");
+}
+
+void completeBootLoadingIfReady(bool cycleComplete) {
+  if (!gBootLoadingMode || !gBootRefreshComplete || !cycleComplete) {
+    return;
+  }
+
+  gBootLoadingMode = false;
+  gScheduler.setConfigPromptText("Config mode active");
+  applySchedulerMode();
+  Serial.print("Boot refresh done: ");
+  Serial.println(gBootRefreshSuccess ? "fresh content updated" : "using cache/fallback");
+  printStatus();
 }
 
 bool provideRssSegment(String& text, uint8_t& r, uint8_t& g, uint8_t& b) {
@@ -204,6 +283,14 @@ void applyPixelStep() {
 
 void enterConfigMode() {
   if (gConfigMode) return;
+  if (gBootLoadingMode && !gBootRefreshComplete) {
+    Serial.println("Boot refresh still running; wait for Now Loading... to finish");
+    return;
+  }
+  if (gBootLoadingMode) {
+    gBootLoadingMode = false;
+    gScheduler.setConfigPromptText("Config mode active");
+  }
   gConfigMode = true;
   gWifiService.enterConfigMode(gSettingsStore.settings());
   if (!gWebService.isRunning()) {
@@ -384,6 +471,7 @@ void setup() {
     gRssRuntime.setRadioControlEnabled(true);
     gRssRuntime.setSuspended(true);
     applySchedulerMode();
+    beginBootLoadingRefresh();
   }
 
   printSerialHelp();
@@ -398,7 +486,7 @@ void loop() {
     gRssRuntime.tick();
     gWifiService.tick();
     gWebService.tick();
-    if ((millis() - gLastConfigPromptMs) > 2000) {
+    if ((millis() - gLastConfigPromptMs) > kConfigPromptRefreshMs) {
       refreshConfigPromptText(false);
     }
   } else {
@@ -406,6 +494,8 @@ void loop() {
   }
 
   gScroller.tick();
+  const bool cycleComplete = gScroller.cycleComplete();
+  completeBootLoadingIfReady(cycleComplete);
   gScheduler.tick();
   if (!gConfigMode && !gManualModeOverride) {
     applySchedulerMode();

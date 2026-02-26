@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here.
 
-## [Unreleased] - 2026-02-25
+## [Unreleased] - 2026-02-26
 
 ### Added
 - Project planning docs and phased execution docs (`README.md`, `TODO.md`, `CLAUDE.md`).
@@ -36,6 +36,10 @@ All notable changes to this project are documented here.
   - `RssFetcher` for HTTPS feed retrieval with retry/backoff
   - `RssCache` for per-source cache files + metadata
   - `RssRuntime` for periodic refresh scheduling and cached playback
+- Cold-boot startup refresh flow:
+  - on boot (when WiFi creds + RSS sources are configured), runtime fetches fresh RSS/sports before normal playback
+  - display scrolls `Now Loading...` while refresh runs
+  - transition to normal playback waits for current loading scroll cycle to complete
 
 ### Changed
 - Scroll speed now adjusts only `FastLED.delay()` timing, with default `speed=10` mapping to `0 ms`.
@@ -53,6 +57,8 @@ All notable changes to this project are documented here.
 - Ordered mode now refreshes each source at source-cycle start (when connected in config mode) before scrolling its items, matching rssArduinoPlatform-style behavior.
 - Ordered mode now also refreshes each source cycle outside config mode by radio-cycling STA on/off between sources.
 - UI label for random toggle is more explicit (`Shuffle RSS/sports items (random)`).
+- Advanced UI playback-order section now explicitly exposes randomization toggle wording (`Randomize RSS/sports item order (shuffle)`).
+- UI includes a build stamp (`UI build: 2026-02-26`) for cache/version verification.
 
 ### Fixed
 - Resolved lack of noticeable speed impact by widening delay profile and enforcing top speed delay `0 ms`.
@@ -66,3 +72,4 @@ All notable changes to this project are documented here.
 - Added compatibility in `/api/rss` handler for both compact and `rss_*` key naming variants and explicit save-failure response.
 - Added handlers for common probe routes (`/favicon.ico`, `/generate_204`, `/hotspot-detect.html`, `/ncsi.txt`) to reduce spurious `request handler not found` errors.
 - RSS item rendering now skips description segment when description is empty (title-only item display).
+- Root UI responses now include explicit no-cache headers to reduce stale web UI behavior after `uploadfs`.

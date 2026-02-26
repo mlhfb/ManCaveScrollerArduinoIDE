@@ -29,3 +29,4 @@ Runtime safety note:
 - WebService includes compatibility handling for legacy/alternate RSS payload key names.
 - App settings include `rss_random_enabled` for selectable random/ordered RSS playback.
 - RSS runtime ordered mode can refresh per-source with managed radio cycling outside config mode.
+- RSS runtime exposes `refreshAllNow()` for cold-boot immediate refresh sequencing.

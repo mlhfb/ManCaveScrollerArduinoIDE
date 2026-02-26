@@ -87,6 +87,12 @@ bool RssRuntime::hasCachedContent() const {
 
 bool RssRuntime::cacheReady() const { return _cacheReady; }
 
+bool RssRuntime::refreshAllNow() {
+  const bool success = refreshCache();
+  scheduleNextRefresh(success);
+  return success;
+}
+
 bool RssRuntime::nextSegment(String& outText, uint8_t& outR, uint8_t& outG,
                              uint8_t& outB) {
   if (!hasEnabledSources()) {

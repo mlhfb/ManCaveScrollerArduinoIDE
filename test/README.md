@@ -22,3 +22,6 @@ Current status:
 - ordered mode: verify source traversal in UI order (`mlb, nhl, ncaaf, nfl, nba, big10`) and in-order item playback.
 - Ordered-mode radio cycle check: outside config mode verify WiFi reconnect/fetch between source cycles and radio-off scrolling between fetches.
 - Empty description check: confirm title-only display when RSS item has no description.
+- Cold-boot refresh check: with WiFi+RSS configured, verify startup scroll shows `Now Loading...` until fresh fetch completes.
+- Cold-boot transition check: verify runtime waits for loading message cycle completion before switching to normal playback.
+- UI parity check: verify Advanced page shows playback randomization toggle and `UI build: 2026-02-26` stamp after `uploadfs`.

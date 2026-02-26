@@ -115,6 +115,9 @@ void WebService::sendError(const char* message, int code) const {
 }
 
 void WebService::handleRoot() const {
+  _server->sendHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+  _server->sendHeader("Pragma", "no-cache");
+  _server->sendHeader("Expires", "0");
   File file = LittleFS.open(kUiPath, "r");
   if (!file) {
     _server->send(404, "text/plain", "UI file not found");

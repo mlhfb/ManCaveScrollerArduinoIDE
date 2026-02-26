@@ -71,6 +71,7 @@ Web server robustness:
 - Handle common captive/probe paths gracefully to avoid noisy not-found logs.
 - `/api/rss` should accept both compact keys (`enabled`, `sports_enabled`, etc.) and explicit `rss_*` keys for compatibility.
 - `/api/rss` includes `random_enabled` / `rss_random_enabled` playback mode toggle.
+- Web UI should clearly expose the randomization toggle in Advanced playback settings.
 
 ## Display/Smoothness Requirements
 - Use Arduino `loop()` with FastLED-driven render cadence (`FastLED.show()`).
@@ -83,6 +84,10 @@ Web server robustness:
 - Scroll-priority runtime policy:
   - outside config mode, prioritize scrolling and suspend WiFi/web/RSS refresh tasks
   - inside config mode, keep scrolling active while WiFi/web are enabled for setup changes
+- Cold-boot loading policy:
+  - when RSS + WiFi are configured, run an immediate fresh-content refresh at startup
+  - during refresh, scroll `Now Loading...`
+  - after refresh completes, switch to normal scheduling only at a scroll cycle boundary
 - Config prompt text should always include reachable network context (mode + SSID + IP).
 
 ## Data/Persistence Requirements
@@ -99,7 +104,7 @@ Web server robustness:
 - RSS outages fall back to cached data or custom messages automatically.
 - Smooth scrolling remains stable during long runtime.
 
-## Current Implementation Notes (2026-02-25)
+## Current Implementation Notes (2026-02-26)
 - RSS runtime now supports:
   - periodic refresh interval (`15 min`) and retry (`60 sec`)
   - per-source LittleFS cache files with metadata
@@ -112,3 +117,6 @@ Web server robustness:
     - config mode: refresh over active connection
     - non-config mode: refresh by cycling radio on/off between sources
 - If RSS item description is empty, display title only and skip description segment.
+- Cold boot now performs an immediate RSS/sports refresh in a background task while the display scrolls `Now Loading...`.
+- After boot refresh finishes, scheduler transition waits for the current loading message to complete before switching.
+- Web root now sends no-cache headers to reduce stale UI behavior after updating LittleFS content.
