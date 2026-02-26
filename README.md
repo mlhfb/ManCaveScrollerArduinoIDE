@@ -33,7 +33,10 @@ Current status: Phase 9 implementation baseline is buildable (`pio run`, `pio ru
   - selectable playback mode:
     - random mode (default): no-repeat random across enabled sources
     - ordered mode: iterate sources in configured UI order and items in source order
-  - ordered mode refreshes each source at source-cycle start in config-mode/connected runtime
+  - ordered mode refreshes each source at source-cycle start:
+    - in config mode: uses active STA connection
+    - outside config mode: radio cycles on, fetches next source/news, radio cycles off
+  - items with empty description display title only (description segment skipped)
 - Web API: endpoint contract implemented (`/api/status`, messages/text/color, speed/brightness/appearance, wifi, advanced, rss, factory-reset), including `rss_source_count` + `rss_sources[]` cache metadata in status.
 - Web UI served from LittleFS (`/web/index.html`) for full setup:
   - message editing (5 slots)

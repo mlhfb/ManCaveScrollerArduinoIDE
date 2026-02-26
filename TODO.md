@@ -103,4 +103,5 @@
 - 2026-02-26: Fixed sports/RSS save UX issue by stopping background status polling from overwriting unsaved form edits.
 - 2026-02-26: Added API probe/fallback routes and `/api/rss` key-compatibility handling.
 - 2026-02-26: Added selectable RSS playback mode (`random` vs `ordered`) in UI/API/settings.
-- 2026-02-26: Ordered mode now traverses configured source order and refreshes each source before its item cycle when connected in config mode.
+- 2026-02-26: Ordered mode now traverses configured source order and refreshes each source before its item cycle both in config mode and in non-config mode (radio on/off per source cycle).
+- 2026-02-26: RSS items with empty descriptions now display title only.

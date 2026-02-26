@@ -89,7 +89,7 @@ bool RssRuntime::cacheReady() const { return _cacheReady; }
 
 bool RssRuntime::nextSegment(String& outText, uint8_t& outR, uint8_t& outG,
                              uint8_t& outB) {
-  if (!hasEnabledSources() || !_cacheReady) {
+  if (!hasEnabledSources()) {
     return false;
   }
 
@@ -100,10 +100,15 @@ bool RssRuntime::nextSegment(String& outText, uint8_t& outR, uint8_t& outG,
   colorForSource(_currentSourceIndex, outR, outG, outB);
   if (_showTitleNext) {
     outText = (_currentItem.title[0] != '\0') ? _currentItem.title : "(no title)";
-    _showTitleNext = false;
+    if (_currentItem.description[0] == '\0') {
+      // No description available: show title only and advance item.
+      _showTitleNext = true;
+      _haveCurrentItem = false;
+    } else {
+      _showTitleNext = false;
+    }
   } else {
-    outText = (_currentItem.description[0] != '\0') ? _currentItem.description
-                                                    : "(no description)";
+    outText = _currentItem.description;
     _showTitleNext = true;
     _haveCurrentItem = false;
   }
@@ -245,6 +250,33 @@ bool RssRuntime::refreshSource(size_t sourceIndex) {
                       _fetchItems, result.itemCount);
 }
 
+bool RssRuntime::refreshSourceWithManagedRadio(size_t sourceIndex) {
+  if (sourceIndex >= _sourceCount) {
+    return false;
+  }
+
+  if (!_radioControlEnabled) {
+    if (_wifiService.mode() != WifiRuntimeMode::StaConnected) {
+      return false;
+    }
+    return refreshSource(sourceIndex);
+  }
+
+  const AppSettings& settings = _settingsStore.settings();
+  if (settings.wifiSsid[0] == '\0') {
+    return false;
+  }
+
+  if (!_wifiService.connectSta(settings.wifiSsid, settings.wifiPassword, 8000, 2)) {
+    _wifiService.stopWifi();
+    return false;
+  }
+
+  const bool refreshed = refreshSource(sourceIndex);
+  _wifiService.stopWifi();
+  return refreshed;
+}
+
 bool RssRuntime::pickNextItemOrdered() {
   if (_sourceCount == 0) {
     return false;
@@ -257,11 +289,11 @@ bool RssRuntime::pickNextItemOrdered() {
     }
     const size_t sourceIndex = _orderedSourceIndex;
 
-    // Mimic rssArduinoPlatform behavior: refresh selected source right before use
-    // when we are at the start of its cycle and currently connected in config mode.
-    if (_orderedItemIndex == 0 && !_radioControlEnabled &&
-        _wifiService.mode() == WifiRuntimeMode::StaConnected) {
-      refreshSource(sourceIndex);
+    // Mimic rssArduinoPlatform: refresh selected source at start of source cycle
+    // before traversing all its items.
+    if (_orderedItemIndex == 0) {
+      refreshSourceWithManagedRadio(sourceIndex);
+      _cacheReady = hasCachedContent();
     }
 
     uint32_t count = 0;

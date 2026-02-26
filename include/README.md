@@ -28,3 +28,4 @@ Runtime safety note:
 - WifiService exposes both current `IP` and `SSID` for config-mode status prompt rendering.
 - WebService includes compatibility handling for legacy/alternate RSS payload key names.
 - App settings include `rss_random_enabled` for selectable random/ordered RSS playback.
+- RSS runtime ordered mode can refresh per-source with managed radio cycling outside config mode.

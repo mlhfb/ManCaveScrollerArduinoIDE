@@ -108,4 +108,7 @@ Web server robustness:
 - `/api/status` includes `rss_source_count` and `rss_sources[]` cache metadata.
 - RSS playback mode is selectable:
   - random no-repeat mode
-  - ordered source/item mode with per-source refresh before cycle (connected config runtime)
+  - ordered source/item mode with per-source refresh before cycle
+    - config mode: refresh over active connection
+    - non-config mode: refresh by cycling radio on/off between sources
+- If RSS item description is empty, display title only and skip description segment.

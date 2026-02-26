@@ -51,6 +51,8 @@ All notable changes to this project are documented here.
   - `Random item order` enabled: no-repeat random selection across enabled sources
   - `Random item order` disabled: deterministic source-order traversal with ordered item playback
 - Ordered mode now refreshes each source at source-cycle start (when connected in config mode) before scrolling its items, matching rssArduinoPlatform-style behavior.
+- Ordered mode now also refreshes each source cycle outside config mode by radio-cycling STA on/off between sources.
+- UI label for random toggle is more explicit (`Shuffle RSS/sports items (random)`).
 
 ### Fixed
 - Resolved lack of noticeable speed impact by widening delay profile and enforcing top speed delay `0 ms`.
@@ -63,3 +65,4 @@ All notable changes to this project are documented here.
 - Fixed RSS/sports settings reliability in web UI by preventing periodic status polling from overwriting unsaved form edits.
 - Added compatibility in `/api/rss` handler for both compact and `rss_*` key naming variants and explicit save-failure response.
 - Added handlers for common probe routes (`/favicon.ico`, `/generate_204`, `/hotspot-detect.html`, `/ncsi.txt`) to reduce spurious `request handler not found` errors.
+- RSS item rendering now skips description segment when description is empty (title-only item display).

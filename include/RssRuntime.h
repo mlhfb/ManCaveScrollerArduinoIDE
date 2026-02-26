@@ -40,6 +40,7 @@ private:
   void rebuildSources(const AppSettings& settings);
   bool refreshCache();
   bool refreshSource(size_t sourceIndex);
+  bool refreshSourceWithManagedRadio(size_t sourceIndex);
   bool pickNextItem();
   bool pickNextItemOrdered();
   void resetPlayback();

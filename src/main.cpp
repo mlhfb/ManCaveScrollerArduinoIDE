@@ -51,8 +51,19 @@ void syncSchedulerMessagesFromSettings() {
 
 bool shouldUseRssPlayback() {
   const AppSettings& settings = gSettingsStore.settings();
-  return settings.rssEnabled && gRssRuntime.hasEnabledSources() &&
-         gRssRuntime.cacheReady();
+  if (!settings.rssEnabled || !gRssRuntime.hasEnabledSources()) {
+    return false;
+  }
+
+  // Random mode requires existing cache; ordered mode can refresh per-source on demand.
+  if (settings.rssRandomEnabled) {
+    return gRssRuntime.cacheReady();
+  }
+
+  if (gRssRuntime.cacheReady()) {
+    return true;
+  }
+  return settings.wifiSsid[0] != '\0';
 }
 
 void applySchedulerMode() {

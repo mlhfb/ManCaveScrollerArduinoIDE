@@ -20,3 +20,5 @@ Current status:
 - RSS playback mode check:
 - random mode: verify non-repeat randomized source/item order
 - ordered mode: verify source traversal in UI order (`mlb, nhl, ncaaf, nfl, nba, big10`) and in-order item playback.
+- Ordered-mode radio cycle check: outside config mode verify WiFi reconnect/fetch between source cycles and radio-off scrolling between fetches.
+- Empty description check: confirm title-only display when RSS item has no description.
