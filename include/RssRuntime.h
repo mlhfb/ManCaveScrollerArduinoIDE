@@ -16,6 +16,7 @@ public:
   bool begin();
   void onSettingsChanged(const AppSettings& settings);
   void setSuspended(bool suspended);
+  void setRadioControlEnabled(bool enabled);
   void tick();
   void forceRefreshSoon();
 
@@ -51,6 +52,7 @@ private:
   RssSource _sources[APP_MAX_RSS_SOURCES];
   size_t _sourceCount;
   bool _suspended;
+  bool _radioControlEnabled;
   uint32_t _nextRefreshMs;
 
   bool _cacheReady;

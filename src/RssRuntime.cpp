@@ -25,6 +25,7 @@ RssRuntime::RssRuntime(SettingsStore& settingsStore, WifiService& wifiService)
       _sources{},
       _sourceCount(0),
       _suspended(false),
+      _radioControlEnabled(true),
       _nextRefreshMs(0),
       _cacheReady(false),
       _haveCurrentItem(false),
@@ -51,6 +52,10 @@ void RssRuntime::onSettingsChanged(const AppSettings& settings) {
 }
 
 void RssRuntime::setSuspended(bool suspended) { _suspended = suspended; }
+
+void RssRuntime::setRadioControlEnabled(bool enabled) {
+  _radioControlEnabled = enabled;
+}
 
 void RssRuntime::tick() {
   if (_suspended || !hasEnabledSources()) {
@@ -133,6 +138,34 @@ bool RssRuntime::refreshCache() {
   }
 
   const AppSettings& settings = _settingsStore.settings();
+
+  // In config mode we keep current radio state stable so web UI stays reachable.
+  if (!_radioControlEnabled) {
+    if (_wifiService.mode() != WifiRuntimeMode::StaConnected) {
+      _cacheReady = hasCachedContent();
+      return false;
+    }
+
+    bool fetchedAny = false;
+    for (size_t i = 0; i < _sourceCount; i++) {
+      const RssFetchResult result = _fetcher.fetch(
+          _sources[i].url, _fetchItems, APP_MAX_RSS_ITEMS, 3, 10000, 750);
+      if (!result.success || result.itemCount == 0) {
+        continue;
+      }
+      if (_cache.store(_sources[i].url, _sources[i].name, _fetchItems,
+                       result.itemCount)) {
+        fetchedAny = true;
+      }
+    }
+
+    _cacheReady = hasCachedContent();
+    if (fetchedAny) {
+      resetPlayback();
+    }
+    return fetchedAny;
+  }
+
   if (settings.wifiSsid[0] == '\0') {
     _cacheReady = hasCachedContent();
     return false;

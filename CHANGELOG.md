@@ -46,6 +46,7 @@ All notable changes to this project are documented here.
 - Runtime mode behavior is now scroll-priority:
   - outside config mode: WiFi/web/RSS refresh work is suspended for max scroll smoothness
   - inside config mode: scrolling and WiFi/web run simultaneously
+- Config-mode prompt text now includes current mode + SSID + IP address for discoverability.
 
 ### Fixed
 - Resolved lack of noticeable speed impact by widening delay profile and enforcing top speed delay `0 ms`.
@@ -54,3 +55,4 @@ All notable changes to this project are documented here.
 - Fixed `loopTask` stack overflow during RSS refresh by moving large fetch item buffer off stack to persistent runtime storage.
 - Reduced repeated LittleFS open errors for missing cache files by checking file existence before opening.
 - Removed per-frame cache filesystem checks from auto mode arbitration path to reduce scroll jitter.
+- Fixed config-mode web reachability regression by preventing RSS refresh logic from cycling WiFi radio while config mode is active.

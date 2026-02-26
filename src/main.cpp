@@ -31,6 +31,8 @@ uint8_t gPixelStep = APP_SCROLL_PIXEL_STEP_DEFAULT;
 bool gConfigMode = false;
 bool gManualModeOverride = false;
 ContentMode gManualMode = ContentMode::Messages;
+String gLastConfigPrompt;
+uint32_t gLastConfigPromptMs = 0;
 
 bool gLastButtonState = true;
 uint32_t gLastButtonChangeMs = 0;
@@ -73,6 +75,28 @@ void applySchedulerMode() {
   if (gScheduler.mode() != target) {
     gScheduler.setMode(target);
   }
+}
+
+void refreshConfigPromptText(bool forceRestart) {
+  String mode = gWifiService.modeString();
+  String ssid = gWifiService.ssid();
+  String ip = gWifiService.ip();
+
+  String text = "Config ";
+  text += mode;
+  text += " SSID:";
+  text += (ssid.length() > 0) ? ssid : "(none)";
+  text += " IP:";
+  text += ip;
+
+  if (forceRestart || text != gLastConfigPrompt) {
+    gLastConfigPrompt = text;
+    gScheduler.setConfigPromptText(text);
+    if (gScheduler.mode() == ContentMode::ConfigPrompt) {
+      gScheduler.setMode(ContentMode::ConfigPrompt);
+    }
+  }
+  gLastConfigPromptMs = millis();
 }
 
 void applyRuntimeFromSettings(const AppSettings& settings) {
@@ -175,7 +199,9 @@ void enterConfigMode() {
     gWebService.begin();
   }
   gRssRuntime.setSuspended(false);
+  gRssRuntime.setRadioControlEnabled(false);
   gRssRuntime.forceRefreshSoon();
+  refreshConfigPromptText(true);
   applySchedulerMode();
   Serial.println("Entered config mode");
   printStatus();
@@ -186,6 +212,7 @@ void exitConfigMode() {
   gConfigMode = false;
   gWebService.stop();
   gWifiService.exitConfigMode(true);
+  gRssRuntime.setRadioControlEnabled(true);
   gRssRuntime.setSuspended(true);
   applySchedulerMode();
   Serial.println("Exited config mode");
@@ -336,11 +363,14 @@ void setup() {
     gConfigMode = true;
     gWebService.begin();
     gRssRuntime.setSuspended(false);
+    gRssRuntime.setRadioControlEnabled(false);
     gRssRuntime.forceRefreshSoon();
+    refreshConfigPromptText(true);
     applySchedulerMode();
   } else {
     // Normal scrolling mode: WiFi off and RSS refresh suspended for max smoothness.
     gWifiService.stopWifi();
+    gRssRuntime.setRadioControlEnabled(true);
     gRssRuntime.setSuspended(true);
     applySchedulerMode();
   }
@@ -357,6 +387,9 @@ void loop() {
     gRssRuntime.tick();
     gWifiService.tick();
     gWebService.tick();
+    if ((millis() - gLastConfigPromptMs) > 2000) {
+      refreshConfigPromptText(false);
+    }
   } else {
     gRssRuntime.setSuspended(true);
   }

@@ -34,6 +34,7 @@ public:
   WifiRuntimeMode mode() const;
   bool isConnected() const;
   String ip() const;
+  String ssid() const;
   const char* modeString() const;
 
 private:

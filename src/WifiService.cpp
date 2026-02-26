@@ -109,6 +109,17 @@ String WifiService::ip() const {
   return "0.0.0.0";
 }
 
+String WifiService::ssid() const {
+  if (_mode == WifiRuntimeMode::AP) {
+    return WiFi.softAPSSID();
+  }
+  if (_mode == WifiRuntimeMode::StaConnected ||
+      _mode == WifiRuntimeMode::StaConnecting) {
+    return WiFi.SSID();
+  }
+  return "";
+}
+
 const char* WifiService::modeString() const {
   switch (_mode) {
     case WifiRuntimeMode::AP:

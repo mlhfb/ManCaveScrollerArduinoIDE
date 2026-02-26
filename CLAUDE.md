@@ -78,6 +78,7 @@ Implement and maintain:
 - Scroll-priority runtime policy:
   - outside config mode, prioritize scrolling and suspend WiFi/web/RSS refresh tasks
   - inside config mode, keep scrolling active while WiFi/web are enabled for setup changes
+- Config prompt text should always include reachable network context (mode + SSID + IP).
 
 ## Data/Persistence Requirements
 - Versioned settings schema with sane defaults.

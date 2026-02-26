@@ -18,3 +18,4 @@ Documentation note:
 - Runtime mounts LittleFS using partition label `littlefs` (matching `partitions.csv`).
 - Runtime cache reads now pre-check file existence to avoid repeated missing-file open errors.
 - Runtime policy: outside config mode the firmware prioritizes scrolling and suspends WiFi/web refresh work.
+- In config mode the scroller prompt includes mode/SSID/IP so users can reach the hosted page.

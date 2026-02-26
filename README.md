@@ -19,6 +19,7 @@ Current status: Phase 9 implementation baseline is buildable (`pio run`, `pio ru
   - WiFi radio off during normal scrolling mode to reduce artifacts
   - Outside config mode, runtime suspends WiFi/web/RSS refresh tasks and prioritizes scroll output
   - In config mode, scrolling remains active while WiFi/web/API run simultaneously
+  - Config prompt now scrolls active mode plus network details (`SSID` and `IP`)
 - RSS fetch/parsing/sanitization:
   - HTTPS fetch with retry/backoff and timeout
   - bounded RSS XML parsing (`title`, `description`)
