@@ -31,3 +31,4 @@ Runtime safety note:
 - RSS runtime ordered mode can refresh per-source with managed radio cycling outside config mode.
 - RSS runtime exposes `refreshAllNow()` for cold-boot immediate refresh sequencing.
 - RSS fetcher supports both RSS XML and sports JSON payload parsing (JSON-first for sports URLs).
+- Content scheduler exposes `advanceNow()` for manual next-item control from serial/debug tooling.

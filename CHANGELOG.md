@@ -40,6 +40,9 @@ All notable changes to this project are documented here.
   - on boot (when WiFi creds + RSS sources are configured), runtime fetches fresh RSS/sports before normal playback
   - display scrolls `Now Loading...` while refresh runs
   - transition to normal playback waits for current loading scroll cycle to complete
+- WiFi password visibility toggle button in web UI.
+- Serial debug tracing for content scheduler starts and RSS source refresh/pick events.
+- Serial `n` command to skip/advance to next scroll item immediately.
 
 ### Changed
 - Scroll speed now adjusts only `FastLED.delay()` timing, with default `speed=10` mapping to `0 ms`.
@@ -61,6 +64,8 @@ All notable changes to this project are documented here.
 - Advanced UI randomization toggle now defaults to OFF (unless persisted settings explicitly enable it).
 - UI includes a build stamp (`UI build: 2026-02-26`) for cache/version verification.
 - Sports source URL builder now targets JSON backend endpoints (`espn_scores_json.php?sport=<sport>&format=json`) and auto-upgrades legacy `espn_scores_rss.php` path text.
+- Ordered (non-random) source playback now traverses selected sports in this order:
+  `mlb, nhl, ncaaf, nfl, nba, big10`, then `npr`.
 
 ### Fixed
 - Resolved lack of noticeable speed impact by widening delay profile and enforcing top speed delay `0 ms`.
@@ -76,3 +81,4 @@ All notable changes to this project are documented here.
 - RSS item rendering now skips description segment when description is empty (title-only item display).
 - Root UI responses now include explicit no-cache headers to reduce stale web UI behavior after `uploadfs`.
 - Sports payload ingestion now supports JSON parsing for scoreboard-style objects/arrays with RSS parse fallback for compatibility.
+- Web UI parity restored for WiFi password reveal/hide control.

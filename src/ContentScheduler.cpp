@@ -37,6 +37,8 @@ void ContentScheduler::tick() {
   }
 }
 
+void ContentScheduler::advanceNow() { startCurrentContent(); }
+
 void ContentScheduler::updateMessages(const ScheduledMessage* messages,
                                       size_t messageCount) {
   _messages = messages;
@@ -89,6 +91,7 @@ void ContentScheduler::setFallbackText(const String& text) { _fallbackText = tex
 void ContentScheduler::startCurrentContent() {
   if (_mode == ContentMode::Messages) {
     if (!startNextEnabledMessage()) {
+      Serial.println("[SCROLL] Message fallback: No enabled messages");
       _scroller.start("No enabled messages",
                       _panel.color(255, 0, 0), _messageDelayMs);
     }
@@ -96,6 +99,8 @@ void ContentScheduler::startCurrentContent() {
   }
 
   if (_mode == ContentMode::ConfigPrompt) {
+    Serial.print("[SCROLL] Config prompt: ");
+    Serial.println(_configPromptText);
     _scroller.start(_configPromptText, _panel.color(255, 195, 0), _messageDelayMs);
     return;
   }
@@ -107,6 +112,8 @@ void ContentScheduler::startCurrentContent() {
 
   // Fallback mode: prefer user messages; if none, show fallback status text.
   if (!startNextEnabledMessage()) {
+    Serial.print("[SCROLL] Fallback text: ");
+    Serial.println(_fallbackText);
     _scroller.start(_fallbackText, _panel.color(255, 0, 0), _messageDelayMs);
   }
 }
@@ -125,6 +132,8 @@ bool ContentScheduler::startNextEnabledMessage() {
     }
 
     _nextMessageIndex = (idx + 1) % _messageCount;
+    Serial.print("[SCROLL] Message: ");
+    Serial.println(m.text);
     _scroller.start(m.text, _panel.color(m.r, m.g, m.b), _messageDelayMs);
     return true;
   }
@@ -139,14 +148,20 @@ void ContentScheduler::startRssSegment() {
     uint8_t g = 255;
     uint8_t b = 255;
     if (_rssSegmentProvider(text, r, g, b) && text.length() > 0) {
+      Serial.print("[SCROLL] RSS: ");
+      Serial.println(text);
       _scroller.start(text, _panel.color(r, g, b), _messageDelayMs);
       return;
     }
   }
 
   if (_rssShowTitleNext) {
+    Serial.print("[SCROLL] RSS placeholder title: ");
+    Serial.println(_rssTitleText);
     _scroller.start(_rssTitleText, _panel.color(245, 245, 245), _messageDelayMs);
   } else {
+    Serial.print("[SCROLL] RSS placeholder desc: ");
+    Serial.println(_rssDescriptionText);
     _scroller.start(_rssDescriptionText, _panel.color(0, 255, 0), _messageDelayMs);
   }
   _rssShowTitleNext = !_rssShowTitleNext;

@@ -73,6 +73,7 @@ Web server robustness:
 - `/api/rss` includes `random_enabled` / `rss_random_enabled` playback mode toggle.
 - Web UI should clearly expose the randomization toggle in Advanced playback settings.
 - Randomization default should be OFF unless explicitly enabled by saved settings.
+- Web UI WiFi section includes password show/hide control for setup usability.
 
 ## Display/Smoothness Requirements
 - Use Arduino `loop()` with FastLED-driven render cadence (`FastLED.show()`).
@@ -123,3 +124,6 @@ Web server robustness:
 - Web root now sends no-cache headers to reduce stale UI behavior after updating LittleFS content.
 - Sports feed URL generation now uses JSON endpoint/query semantics (`espn_scores_json.php` + `format=json`).
 - Feed fetcher parses sports JSON payloads (including nested scoreboard/event objects) and falls back to RSS parser when needed.
+- Ordered mode source traversal runs selected sports first (`mlb, nhl, ncaaf, nfl, nba, big10`) then `npr`.
+- Serial debug output logs source refreshes, source picks, and each text segment started for scrolling.
+- Serial `n` command forces immediate advance to the next scroll item for faster validation.

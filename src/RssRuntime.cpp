@@ -238,6 +238,10 @@ bool RssRuntime::pickNextItem() {
   _currentSourceIndex = sourceIndex;
   _haveCurrentItem = true;
   _showTitleNext = true;
+  Serial.print("[RSS] Random pick source=");
+  Serial.print(_sources[sourceIndex].name);
+  Serial.print(" title=");
+  Serial.println(_currentItem.title);
   (void)cycleReset;
   return true;
 }
@@ -247,13 +251,27 @@ bool RssRuntime::refreshSource(size_t sourceIndex) {
     return false;
   }
 
+  Serial.print("[RSS] Refresh source: ");
+  Serial.print(_sources[sourceIndex].name);
+  Serial.print(" -> ");
+  Serial.println(_sources[sourceIndex].url);
+
   const RssFetchResult result = _fetcher.fetch(
       _sources[sourceIndex].url, _fetchItems, APP_MAX_RSS_ITEMS, 3, 10000, 750);
   if (!result.success || result.itemCount == 0) {
+    Serial.print("[RSS] Refresh failed: ");
+    Serial.println(result.error);
     return false;
   }
-  return _cache.store(_sources[sourceIndex].url, _sources[sourceIndex].name,
-                      _fetchItems, result.itemCount);
+  const bool stored = _cache.store(_sources[sourceIndex].url, _sources[sourceIndex].name,
+                                   _fetchItems, result.itemCount);
+  Serial.print("[RSS] Refresh ");
+  Serial.print(stored ? "stored " : "store failed ");
+  Serial.print("items=");
+  Serial.print(result.itemCount);
+  Serial.print(" source=");
+  Serial.println(_sources[sourceIndex].name);
+  return stored;
 }
 
 bool RssRuntime::refreshSourceWithManagedRadio(size_t sourceIndex) {
@@ -329,6 +347,15 @@ bool RssRuntime::pickNextItemOrdered() {
     _currentSourceIndex = sourceIndex;
     _haveCurrentItem = true;
     _showTitleNext = true;
+
+    Serial.print("[RSS] Ordered pick source=");
+    Serial.print(_sources[sourceIndex].name);
+    Serial.print(" item=");
+    Serial.print(_orderedItemIndex + 1);
+    Serial.print("/");
+    Serial.print(count);
+    Serial.print(" title=");
+    Serial.println(_currentItem.title);
 
     _orderedItemIndex++;
     if (_orderedItemIndex >= count) {

@@ -95,14 +95,10 @@ size_t buildRssSources(const AppSettings& settings, RssSource* outSources,
 
   size_t count = 0;
 
-  if (settings.rssNprEnabled && settings.rssUrl[0] != '\0' && count < maxSources) {
-    safeCopy(outSources[count].name, sizeof(outSources[count].name), "NPR");
-    safeCopy(outSources[count].url, sizeof(outSources[count].url), settings.rssUrl);
-    outSources[count].enabled = true;
-    count++;
-  }
-
-  if (settings.rssSportsEnabled) {
+  auto addSportsSources = [&]() {
+    if (!settings.rssSportsEnabled) {
+      return;
+    }
     for (const SportDef& sport : kSports) {
       if (!(settings.*(sport.enabledField))) {
         continue;
@@ -121,6 +117,26 @@ size_t buildRssSources(const AppSettings& settings, RssSource* outSources,
       outSources[count].enabled = true;
       count++;
     }
+  };
+
+  auto addNprSource = [&]() {
+    if (!settings.rssNprEnabled || settings.rssUrl[0] == '\0' || count >= maxSources) {
+      return;
+    }
+    safeCopy(outSources[count].name, sizeof(outSources[count].name), "NPR");
+    safeCopy(outSources[count].url, sizeof(outSources[count].url), settings.rssUrl);
+    outSources[count].enabled = true;
+    count++;
+  };
+
+  // Ordered mode expected sequence:
+  // mlb, nhl, ncaaf, nfl, nba, big10, npr
+  if (settings.rssRandomEnabled) {
+    addNprSource();
+    addSportsSources();
+  } else {
+    addSportsSources();
+    addNprSource();
   }
 
   return count;

@@ -30,6 +30,7 @@ public:
   void begin(const ScheduledMessage* messages, size_t messageCount,
              uint16_t messageDelayMs, uint8_t messagePixelsPerTick);
   void tick();
+  void advanceNow();
   void updateMessages(const ScheduledMessage* messages, size_t messageCount);
 
   void setMode(ContentMode mode);

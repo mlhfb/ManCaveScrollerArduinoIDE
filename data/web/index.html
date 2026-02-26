@@ -48,6 +48,26 @@
       color: #f8fafc;
       margin-bottom: 8px;
     }
+    .password-wrap {
+      display: flex;
+      align-items: stretch;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .password-wrap input[type=password],
+    .password-wrap input[type=text] {
+      margin-bottom: 0;
+      flex: 1;
+    }
+    .icon-btn {
+      border: 1px solid #475569;
+      background: #0f172a;
+      color: #cbd5e1;
+      border-radius: 7px;
+      width: 42px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
     input[type=range] { width: 100%; }
     input[type=color] {
       width: 44px;
@@ -175,7 +195,10 @@
       <label for="ssid">SSID</label>
       <input id="ssid" type="text" placeholder="WiFi network name">
       <label for="password">Password</label>
-      <input id="password" type="password" placeholder="WiFi password">
+      <div class="password-wrap">
+        <input id="password" type="password" placeholder="WiFi password">
+        <button id="togglePasswordBtn" class="icon-btn" type="button" onclick="togglePasswordVisibility()" title="Show password" aria-label="Show password">&#128065;</button>
+      </div>
       <button class="btn" onclick="saveWifi()">Connect</button>
       <button class="btn btn-alt" onclick="showAdvanced()">Advanced</button>
     </div>
@@ -241,6 +264,20 @@
     let messages = [];
 
     function g(id) { return document.getElementById(id); }
+
+    function togglePasswordVisibility() {
+      const pw = g("password");
+      const btn = g("togglePasswordBtn");
+      if (pw.type === "password") {
+        pw.type = "text";
+        btn.title = "Hide password";
+        btn.setAttribute("aria-label", "Hide password");
+      } else {
+        pw.type = "password";
+        btn.title = "Show password";
+        btn.setAttribute("aria-label", "Show password");
+      }
+    }
 
     function setStatus(message, ok) {
       const el = g("status");

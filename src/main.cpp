@@ -251,6 +251,7 @@ void printSerialHelp() {
   Serial.println("  f=speed faster, s=speed slower");
   Serial.println("  1..9=set speed 1..9, 0=set speed 10");
   Serial.println("  p=toggle pixel step (1/2/3)");
+  Serial.println("  n=advance to next scroll item");
   Serial.println("  c=enter config mode, x=exit config mode");
   Serial.println("  m=manual messages, r=manual rss, b=manual fallback, a=auto");
   Serial.println("  h=help");
@@ -361,6 +362,9 @@ void handleSerialInput() {
         gPixelStep = APP_SCROLL_PIXEL_STEP_MIN;
       }
       applyPixelStep();
+    } else if (c == 'n') {
+      Serial.println("[SCROLL] Manual advance requested");
+      gScheduler.advanceNow();
     } else if (c == 'c') {
       enterConfigMode();
     } else if (c == 'x') {

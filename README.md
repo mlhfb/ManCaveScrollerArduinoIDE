@@ -35,7 +35,8 @@ After web UI changes, run `pio run -t uploadfs` so the device serves the updated
   - `LIVE` flag inference hook for sports hot-list prioritization
   - selectable playback mode:
     - random mode (default OFF): no-repeat random across enabled sources
-    - ordered mode: iterate sources in configured UI order and items in source order
+  - ordered mode: iterate sources in configured UI order and items in source order
+    - ordered traversal sequence is sports first (`mlb, nhl, ncaaf, nfl, nba, big10`) then `npr`
   - ordered mode refreshes each source at source-cycle start:
     - in config mode: uses active STA connection
     - outside config mode: radio cycles on, fetches next source/news, radio cycles off
@@ -45,6 +46,7 @@ After web UI changes, run `pio run -t uploadfs` so the device serves the updated
   - message editing (5 slots)
   - appearance sliders
   - WiFi credentials
+  - WiFi password show/hide toggle button
   - advanced panel settings
   - RSS + sports source configuration
   - playback-order randomization toggle (`Randomize RSS/sports item order (shuffle, OFF by default)`)
@@ -55,8 +57,10 @@ After web UI changes, run `pio run -t uploadfs` so the device serves the updated
   - Brightness: `u` (up), `d` (down)
   - Speed (delay only): `f` (faster), `s` (slower), `1..9` and `0` for exact speed 1..10
   - Pixel step: `p` toggles `1 -> 2 -> 3`
+  - Next item: `n` forces immediate advance to next scroll item
   - Scheduler mode testing: `m`/`r`/`b` manual override, `a` auto mode
   - Help: `h`
+- Serial debug output includes source refresh/pick logs and per-item scroll start logs.
 - Scroller defaults on boot:
   - Delay: `0 ms` (speed `10`)
   - Pixel step: `1`
