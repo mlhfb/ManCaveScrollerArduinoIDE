@@ -122,7 +122,7 @@ Web server robustness:
 - Cold boot now performs an immediate RSS/sports refresh in a background task while the display scrolls `Now Loading...`.
 - After boot refresh finishes, scheduler transition waits for the current loading message to complete before switching.
 - Web root now sends no-cache headers to reduce stale UI behavior after updating LittleFS content.
-- Sports feed URL generation now uses JSON endpoint/query semantics (`espn_scores_json.php` + `format=json`).
+- Sports feed URL generation now uses backend JSON mode on `espn_scores_rss.php` (`format=json`).
 - Feed fetcher parses sports JSON payloads (including nested scoreboard/event objects) and falls back to RSS parser when needed.
 - Ordered mode source traversal runs selected sports first (`mlb, nhl, ncaaf, nfl, nba, big10`) then `npr`.
 - Serial debug output logs source refreshes, source picks, and each text segment started for scrolling.

@@ -110,7 +110,7 @@
 - 2026-02-26: Web UI advanced section now labels playback order more explicitly and includes UI build stamp for cache/version checks.
 - 2026-02-26: Web root now sends no-cache headers to reduce stale UI asset behavior.
 - 2026-02-26: Random playback default changed to OFF for new/default settings and UI fallback state.
-- 2026-02-26: Sports source URL generation now targets JSON (`espn_scores_json.php?format=json`) instead of RSS.
+- 2026-02-26: Sports source URL generation now targets backend JSON mode (`espn_scores_rss.php?format=json`).
 - 2026-02-26: Fetch runtime now supports JSON feed parsing for sports with RSS fallback compatibility.
 - 2026-02-26: Added Advanced UI password visibility toggle button for WiFi password field.
 - 2026-02-26: Ordered playback source sequence now follows selected sports first (`mlb, nhl, ncaaf, nfl, nba, big10`) then `npr`.

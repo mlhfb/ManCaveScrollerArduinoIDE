@@ -63,7 +63,7 @@ All notable changes to this project are documented here.
 - Advanced UI playback-order section now explicitly exposes randomization toggle wording (`Randomize RSS/sports item order (shuffle)`).
 - Advanced UI randomization toggle now defaults to OFF (unless persisted settings explicitly enable it).
 - UI includes a build stamp (`UI build: 2026-02-26`) for cache/version verification.
-- Sports source URL builder now targets JSON backend endpoints (`espn_scores_json.php?sport=<sport>&format=json`) and auto-upgrades legacy `espn_scores_rss.php` path text.
+- Sports source URL builder now targets backend JSON mode via `espn_scores_rss.php?sport=<sport>&format=json` and normalizes legacy `espn_scores_json.php` path text.
 - Ordered (non-random) source playback now traverses selected sports in this order:
   `mlb, nhl, ncaaf, nfl, nba, big10`, then `npr`.
 

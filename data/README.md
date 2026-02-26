@@ -25,4 +25,4 @@ Documentation note:
 - WiFi form includes a password visibility toggle button.
 - Current page stamp: `UI build: 2026-02-26`.
 - If browser still shows an older UI (missing playback toggle), re-run `pio run -t uploadfs` and hard-refresh browser cache.
-- Sports backend URL generation now expects JSON feed responses (`format=json`).
+- Sports backend URL generation now targets `espn_scores_rss.php` with `format=json`.

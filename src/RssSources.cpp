@@ -68,10 +68,10 @@ bool buildSportsUrl(const AppSettings& settings, const char* sportKey,
     if (!base.endsWith("/")) {
       base += "/";
     }
-    base += "espn_scores_json.php";
+    base += "espn_scores_rss.php";
   } else {
-    // Upgrade legacy RSS endpoint naming to JSON endpoint naming.
-    replaceAll(base, "espn_scores_rss.php", "espn_scores_json.php");
+    // Normalize to backend script name while still requesting JSON output.
+    replaceAll(base, "espn_scores_json.php", "espn_scores_rss.php");
   }
 
   outUrl = base;

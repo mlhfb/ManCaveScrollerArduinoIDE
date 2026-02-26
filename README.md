@@ -67,7 +67,7 @@ After web UI changes, run `pio run -t uploadfs` so the device serves the updated
 - Scroller timing path uses `FastLED.delay()`
 - LittleFS mount path explicitly uses partition label `littlefs` to match `partitions.csv`.
 - RSS refresh path is stack-safe on Arduino `loopTask` (fetch buffer is persistent, not local-stack allocated).
-- Sports fetch path now targets JSON backend responses (`espn_scores_json.php` + `format=json`) and parses JSON directly.
+- Sports fetch path now targets backend JSON responses via `espn_scores_rss.php` + `format=json` and parses JSON directly.
 
 ## Objective
 Create a new version of the scroller that:
