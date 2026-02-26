@@ -104,9 +104,21 @@ bool RssRuntime::nextSegment(String& outText, uint8_t& outR, uint8_t& outG,
   }
 
   colorForSource(_currentSourceIndex, outR, outG, outB);
+  bool singleSegment = false;
+  if (_currentSourceIndex < _sourceCount) {
+    String sourceUrl = _sources[_currentSourceIndex].url;
+    sourceUrl.toLowerCase();
+    singleSegment = sourceUrl.indexOf("sport=") >= 0;
+  }
+
   if (_showTitleNext) {
     outText = (_currentItem.title[0] != '\0') ? _currentItem.title : "(no title)";
-    if (_currentItem.description[0] == '\0') {
+    if (singleSegment && _currentItem.description[0] != '\0') {
+      outText += " | ";
+      outText += _currentItem.description;
+      _showTitleNext = true;
+      _haveCurrentItem = false;
+    } else if (_currentItem.description[0] == '\0') {
       // No description available: show title only and advance item.
       _showTitleNext = true;
       _haveCurrentItem = false;

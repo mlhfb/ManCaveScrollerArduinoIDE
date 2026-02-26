@@ -325,6 +325,17 @@ bool extractHomeAwayPair(JsonObjectConst obj, String& outTitle, String& outDescr
     }
   }
 
+  // Support backend shape:
+  // {"away":{"name":"...","score":1},"home":{"name":"...","score":2},"detail":"..."}
+  if (awayScore.length() == 0 && obj["away"].is<JsonObjectConst>()) {
+    JsonObjectConst awayObj = obj["away"].as<JsonObjectConst>();
+    extractScoreText(awayObj["score"], awayScore);
+  }
+  if (homeScore.length() == 0 && obj["home"].is<JsonObjectConst>()) {
+    JsonObjectConst homeObj = obj["home"].as<JsonObjectConst>();
+    extractScoreText(homeObj["score"], homeScore);
+  }
+
   outTitle = awayName + " at " + homeName;
   if (awayScore.length() > 0 && homeScore.length() > 0) {
     outDescription = awayName + " " + awayScore + " - " + homeScore + " " + homeName;
@@ -341,6 +352,14 @@ bool parseJsonItemObject(JsonObjectConst obj, String& outTitle, String& outDescr
     return true;
   }
   if (extractHomeAwayPair(obj, outTitle, outDescription)) {
+    String detail;
+    if (readStringField(obj, "detail", detail) || readStringField(obj, "summary", detail)) {
+      appendPart(outDescription, detail, " | ");
+    }
+    if ((obj["isLive"].is<bool>() && obj["isLive"].as<bool>()) ||
+        (obj["live"].is<bool>() && obj["live"].as<bool>())) {
+      appendPart(outDescription, "LIVE", " | ");
+    }
     String status;
     readNestedStatus(obj, status);
     appendPart(outDescription, status, " | ");

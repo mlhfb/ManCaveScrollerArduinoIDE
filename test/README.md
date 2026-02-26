@@ -27,6 +27,7 @@ Current status:
 - UI parity check: verify Advanced page shows playback randomization toggle and `UI build: 2026-02-26` stamp after `uploadfs`.
 - Random default check: on fresh settings/factory reset verify playback randomization checkbox starts unchecked.
 - Sports format check: verify sports feed requests use backend JSON mode (`espn_scores_rss.php` + `format=json`) and parsed items scroll.
+- Sports message completeness check: verify each sports scroll includes matchup plus score/start detail in one single segment.
 - Ordered sequence check: with random disabled verify selected sports scroll in `mlb, nhl, ncaaf, nfl, nba, big10` order, then `npr`.
 - UI check: verify WiFi password field has show/hide button behavior.
 - Serial control check: press `n` repeatedly and confirm immediate item advancement across current mode.

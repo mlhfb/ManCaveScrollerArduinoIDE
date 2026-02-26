@@ -116,3 +116,5 @@
 - 2026-02-26: Ordered playback source sequence now follows selected sports first (`mlb, nhl, ncaaf, nfl, nba, big10`) then `npr`.
 - 2026-02-26: Added serial debug traces for selected source refreshes/picks and each text segment started by the scheduler.
 - 2026-02-26: Added serial `n` shortcut to force-advance immediately to the next scroll item.
+- 2026-02-26: Sports JSON parser now reads nested `home/away.score` and `detail` fields from backend payloads.
+- 2026-02-26: Sports items now scroll as a single combined segment (`title | description`) instead of split title/description passes.

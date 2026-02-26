@@ -127,3 +127,5 @@ Web server robustness:
 - Ordered mode source traversal runs selected sports first (`mlb, nhl, ncaaf, nfl, nba, big10`) then `npr`.
 - Serial debug output logs source refreshes, source picks, and each text segment started for scrolling.
 - Serial `n` command forces immediate advance to the next scroll item for faster validation.
+- Sports backend JSON fields `home/away.score` and `detail` are parsed and included in the scrolled text.
+- Sports playback should emit one complete line per item (matchup + score/start detail), not split title/description phases.

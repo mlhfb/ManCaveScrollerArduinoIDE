@@ -82,3 +82,6 @@ All notable changes to this project are documented here.
 - Root UI responses now include explicit no-cache headers to reduce stale web UI behavior after `uploadfs`.
 - Sports payload ingestion now supports JSON parsing for scoreboard-style objects/arrays with RSS parse fallback for compatibility.
 - Web UI parity restored for WiFi password reveal/hide control.
+- Backend sports JSON compatibility improved:
+  - nested `home/away.score` values and `detail` text are now captured
+  - sports entries now scroll as one complete combined message (matchup + score/start detail)
