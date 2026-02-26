@@ -72,6 +72,7 @@ Web server robustness:
 - `/api/rss` should accept both compact keys (`enabled`, `sports_enabled`, etc.) and explicit `rss_*` keys for compatibility.
 - `/api/rss` includes `random_enabled` / `rss_random_enabled` playback mode toggle.
 - Web UI should clearly expose the randomization toggle in Advanced playback settings.
+- Randomization default should be OFF unless explicitly enabled by saved settings.
 
 ## Display/Smoothness Requirements
 - Use Arduino `loop()` with FastLED-driven render cadence (`FastLED.show()`).
@@ -120,3 +121,5 @@ Web server robustness:
 - Cold boot now performs an immediate RSS/sports refresh in a background task while the display scrolls `Now Loading...`.
 - After boot refresh finishes, scheduler transition waits for the current loading message to complete before switching.
 - Web root now sends no-cache headers to reduce stale UI behavior after updating LittleFS content.
+- Sports feed URL generation now uses JSON endpoint/query semantics (`espn_scores_json.php` + `format=json`).
+- Feed fetcher parses sports JSON payloads (including nested scoreboard/event objects) and falls back to RSS parser when needed.

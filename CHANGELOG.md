@@ -58,7 +58,9 @@ All notable changes to this project are documented here.
 - Ordered mode now also refreshes each source cycle outside config mode by radio-cycling STA on/off between sources.
 - UI label for random toggle is more explicit (`Shuffle RSS/sports items (random)`).
 - Advanced UI playback-order section now explicitly exposes randomization toggle wording (`Randomize RSS/sports item order (shuffle)`).
+- Advanced UI randomization toggle now defaults to OFF (unless persisted settings explicitly enable it).
 - UI includes a build stamp (`UI build: 2026-02-26`) for cache/version verification.
+- Sports source URL builder now targets JSON backend endpoints (`espn_scores_json.php?sport=<sport>&format=json`) and auto-upgrades legacy `espn_scores_rss.php` path text.
 
 ### Fixed
 - Resolved lack of noticeable speed impact by widening delay profile and enforcing top speed delay `0 ms`.
@@ -73,3 +75,4 @@ All notable changes to this project are documented here.
 - Added handlers for common probe routes (`/favicon.ico`, `/generate_204`, `/hotspot-detect.html`, `/ncsi.txt`) to reduce spurious `request handler not found` errors.
 - RSS item rendering now skips description segment when description is empty (title-only item display).
 - Root UI responses now include explicit no-cache headers to reduce stale web UI behavior after `uploadfs`.
+- Sports payload ingestion now supports JSON parsing for scoreboard-style objects/arrays with RSS parse fallback for compatibility.

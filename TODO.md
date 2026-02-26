@@ -109,3 +109,6 @@
 - 2026-02-26: Cold boot now starts a background refresh task; display scrolls `Now Loading...` until refresh completes, then transitions on cycle boundary.
 - 2026-02-26: Web UI advanced section now labels playback order more explicitly and includes UI build stamp for cache/version checks.
 - 2026-02-26: Web root now sends no-cache headers to reduce stale UI asset behavior.
+- 2026-02-26: Random playback default changed to OFF for new/default settings and UI fallback state.
+- 2026-02-26: Sports source URL generation now targets JSON (`espn_scores_json.php?format=json`) instead of RSS.
+- 2026-02-26: Fetch runtime now supports JSON feed parsing for sports with RSS fallback compatibility.

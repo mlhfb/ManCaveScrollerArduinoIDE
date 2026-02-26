@@ -34,7 +34,7 @@ After web UI changes, run `pio run -t uploadfs` so the device serves the updated
   - periodic refresh schedule (15 min) with retry interval (60 sec) on failures (config mode runtime)
   - `LIVE` flag inference hook for sports hot-list prioritization
   - selectable playback mode:
-    - random mode (default): no-repeat random across enabled sources
+    - random mode (default OFF): no-repeat random across enabled sources
     - ordered mode: iterate sources in configured UI order and items in source order
   - ordered mode refreshes each source at source-cycle start:
     - in config mode: uses active STA connection
@@ -47,7 +47,7 @@ After web UI changes, run `pio run -t uploadfs` so the device serves the updated
   - WiFi credentials
   - advanced panel settings
   - RSS + sports source configuration
-  - playback-order randomization toggle (`Randomize RSS/sports item order (shuffle)`)
+  - playback-order randomization toggle (`Randomize RSS/sports item order (shuffle, OFF by default)`)
   - factory reset confirmation
   - non-destructive status refresh loop (does not overwrite unsaved form edits while configuring)
   - UI build stamp and no-cache root response headers to reduce stale page confusion
@@ -63,6 +63,7 @@ After web UI changes, run `pio run -t uploadfs` so the device serves the updated
 - Scroller timing path uses `FastLED.delay()`
 - LittleFS mount path explicitly uses partition label `littlefs` to match `partitions.csv`.
 - RSS refresh path is stack-safe on Arduino `loopTask` (fetch buffer is persistent, not local-stack allocated).
+- Sports fetch path now targets JSON backend responses (`espn_scores_json.php` + `format=json`) and parses JSON directly.
 
 ## Objective
 Create a new version of the scroller that:

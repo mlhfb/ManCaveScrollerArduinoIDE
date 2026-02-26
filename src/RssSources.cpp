@@ -49,6 +49,10 @@ bool containsPhpPath(const String& value) {
   return lower.indexOf(".php") >= 0;
 }
 
+void replaceAll(String& value, const char* from, const char* to) {
+  value.replace(from, to);
+}
+
 bool buildSportsUrl(const AppSettings& settings, const char* sportKey,
                     String& outUrl) {
   String base = trimCopy(settings.rssSportsBaseUrl);
@@ -64,7 +68,10 @@ bool buildSportsUrl(const AppSettings& settings, const char* sportKey,
     if (!base.endsWith("/")) {
       base += "/";
     }
-    base += "espn_scores_rss.php";
+    base += "espn_scores_json.php";
+  } else {
+    // Upgrade legacy RSS endpoint naming to JSON endpoint naming.
+    replaceAll(base, "espn_scores_rss.php", "espn_scores_json.php");
   }
 
   outUrl = base;
@@ -75,7 +82,7 @@ bool buildSportsUrl(const AppSettings& settings, const char* sportKey,
   }
   outUrl += "sport=";
   outUrl += sportKey;
-  outUrl += "&format=rss";
+  outUrl += "&format=json";
   return true;
 }
 }  // namespace

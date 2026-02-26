@@ -23,6 +23,8 @@ public:
 private:
   uint16_t parseRssXml(const String& xml, RssItem* outItems,
                        size_t maxItems) const;
+  uint16_t parseJsonFeed(const String& payload, RssItem* outItems,
+                         size_t maxItems) const;
 };
 
 #endif

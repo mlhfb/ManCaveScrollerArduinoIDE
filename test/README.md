@@ -25,3 +25,5 @@ Current status:
 - Cold-boot refresh check: with WiFi+RSS configured, verify startup scroll shows `Now Loading...` until fresh fetch completes.
 - Cold-boot transition check: verify runtime waits for loading message cycle completion before switching to normal playback.
 - UI parity check: verify Advanced page shows playback randomization toggle and `UI build: 2026-02-26` stamp after `uploadfs`.
+- Random default check: on fresh settings/factory reset verify playback randomization checkbox starts unchecked.
+- Sports format check: verify sports feed requests use JSON endpoint/query (`espn_scores_json.php` + `format=json`) and parsed items scroll.

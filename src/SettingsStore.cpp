@@ -59,7 +59,7 @@ void SettingsStore::loadDefaults() {
   _settings.rssEnabled = true;
   safeCopy(_settings.rssUrl, sizeof(_settings.rssUrl), "https://feeds.npr.org/1001/rss.xml");
   _settings.rssNprEnabled = true;
-  _settings.rssRandomEnabled = true;
+  _settings.rssRandomEnabled = false;
   _settings.rssSportsEnabled = false;
   _settings.rssSportsBaseUrl[0] = '\0';
   _settings.rssSportMlbEnabled = true;
