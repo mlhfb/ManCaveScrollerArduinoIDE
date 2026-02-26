@@ -45,6 +45,7 @@ Current status: Phase 9 implementation baseline is buildable (`pio run`, `pio ru
   - Delay: `0 ms` (speed `10`)
   - Pixel step: `1`
 - Scroller timing path uses `FastLED.delay()`
+- LittleFS mount path explicitly uses partition label `littlefs` to match `partitions.csv`.
 
 ## Objective
 Create a new version of the scroller that:

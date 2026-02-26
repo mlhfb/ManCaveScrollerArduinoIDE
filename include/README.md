@@ -18,3 +18,6 @@ Current module headers:
 Runtime defaults are defined in `AppConfig.h`:
 - speed default maps to `0 ms` delay
 - pixel step default is `1`
+
+LittleFS note:
+- Settings mount call uses explicit partition label `littlefs`.

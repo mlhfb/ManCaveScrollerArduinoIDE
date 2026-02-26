@@ -81,6 +81,7 @@ Implement and maintain:
 - Loss-tolerant read path:
   - Corrupt or missing config falls back safely, does not crash boot.
 - Cache data separated from settings data.
+- LittleFS mount label must match partition table name (`littlefs` in this repo).
 
 ## Definition of Done (Initial Rewrite)
 - Builds and flashes via PlatformIO on Arduino framework.

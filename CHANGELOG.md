@@ -47,3 +47,4 @@ All notable changes to this project are documented here.
 ### Fixed
 - Resolved lack of noticeable speed impact by widening delay profile and enforcing top speed delay `0 ms`.
 - Corrected cache bitset helper conflict with Arduino macro namespace (`bitSet`).
+- Fixed LittleFS mount failure on ESP32 Arduino by explicitly mounting partition label `"littlefs"` (default Arduino label is `"spiffs"`).

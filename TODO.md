@@ -93,3 +93,6 @@
 - [ ] RSS down/up recovery
 - [x] Document flash, upload, and troubleshooting workflow.
 - [ ] Tag first implementation milestone as `v0.1.0` once end-to-end behavior is stable.
+
+## Notes
+- 2026-02-26: Fixed LittleFS mount regression by mounting partition label `littlefs` explicitly in `SettingsStore`.

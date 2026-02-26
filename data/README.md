@@ -15,3 +15,4 @@ Current content:
 
 Documentation note:
 - Refreshed with current runtime defaults: scroll delay boots at `0 ms`, pixel step boots at `1`.
+- Runtime mounts LittleFS using partition label `littlefs` (matching `partitions.csv`).

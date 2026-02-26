@@ -22,7 +22,7 @@ void safeCopy(char* dst, size_t dstLen, const char* src) {
 }  // namespace
 
 bool SettingsStore::begin() {
-  if (!LittleFS.begin(true)) {
+  if (!LittleFS.begin(true, "/littlefs", 10, "littlefs")) {
     return false;
   }
 
