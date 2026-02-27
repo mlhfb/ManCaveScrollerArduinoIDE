@@ -128,3 +128,4 @@
 - 2026-02-26: Added GPIO35 encoder button config-mode toggle; active-low behavior aligned with rssArduinoPlatform.
 - 2026-02-26: Fixed startup sequencing so weather is re-queued first after boot loading completes.
 - 2026-02-26: Time display now uses Eastern timezone with 24-hour uppercase format (`THU FEB 26 -- 15:48`).
+- 2026-02-26: Sports team names now use backend JSON `teamColor` values while preserving winner/loser score colors and rotating base color for untagged text.

@@ -54,6 +54,8 @@ After web UI changes, run `pio run -t uploadfs` so the device serves the updated
   - sports items scroll as one complete message (`matchup + score/start detail`)
   - scheduled/future sports entries suppress `0 at 0` score placeholders
   - scored sports entries color winning score green and losing score red
+  - team names are colorized from backend JSON `home/away.teamColor` when provided
+  - remaining non-tagged sports text (for example `at` and detail/status text) keeps rotating base RSS color
 - Web API: endpoint contract implemented (`/api/status`, messages/text/color, speed/brightness/appearance, wifi, advanced, rss, factory-reset), including `rss_source_count` + `rss_sources[]` cache metadata in status.
 - Web API includes `/api/exit-config` for UI-triggered save-and-exit flow.
 - Web UI served from LittleFS (`/web/index.html`) for full setup:
@@ -84,6 +86,7 @@ After web UI changes, run `pio run -t uploadfs` so the device serves the updated
 - RSS refresh path is stack-safe on Arduino `loopTask` (fetch buffer is persistent, not local-stack allocated).
 - Sports fetch path now targets backend JSON responses via `espn_scores_rss.php` + `format=json` and parses JSON directly.
 - Sports JSON parser supports backend-style nested objects (`home/away.score`) and `detail` status fields.
+- Sports JSON parser also consumes backend team-color fields (`home/away.teamColor`) for team-name rendering.
 - Renderer supports inline mixed-color score fragments while keeping a rotating base message color per RSS item.
 
 ## Objective

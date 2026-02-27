@@ -29,4 +29,5 @@ Documentation note:
 - Sports backend URL generation now targets `espn_scores_rss.php` with `format=json`.
 - Sports messages now render as a single combined line per item (matchup + score/start detail).
 - Scheduled sports games now render matchup + start detail without placeholder `0 at 0` scores.
+- Team names now use backend JSON `teamColor` values when present, while score colors and base color cycling remain intact.
 - Time interstitial now renders Eastern 24-hour uppercase format (`THU FEB 26 -- 15:48`).

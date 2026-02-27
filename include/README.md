@@ -36,4 +36,5 @@ Runtime safety note:
 - Content scheduler exposes `advanceNow()` for manual next-item control from serial/debug tooling.
 - RSS runtime combines sports title+description into one segment for complete single-line score messages.
 - Display/scroller pipeline supports inline color markup for per-fragment color (used for winner/loser score coloring).
+- RSS fetcher maps backend `home/away.teamColor` into inline color tags for team-name rendering.
 - Weather API URL is injected via local `APP_WEATHER_API_URL` macro (from ignored `include/Secrets.h`).

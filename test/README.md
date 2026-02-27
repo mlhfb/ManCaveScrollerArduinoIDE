@@ -29,6 +29,7 @@ Current status:
 - Sports format check: verify sports feed requests use backend JSON mode (`espn_scores_rss.php` + `format=json`) and parsed items scroll.
 - Sports message completeness check: verify each sports scroll includes matchup plus score/start detail in one single segment.
 - Future-game formatting check: verify scheduled games show `Team at Team  <start detail>` without `0 at 0`.
+- Team-color check: verify team names render in backend `teamColor` while non-team text keeps rotating base message color.
 - Score-color check: verify higher score renders green and lower score renders red on scored games.
 - Ordered sequence check: with random disabled verify selected sports scroll in `mlb, nhl, ncaaf, nfl, nba, big10` order, then `npr`.
 - UI check: verify WiFi password field has show/hide button behavior.

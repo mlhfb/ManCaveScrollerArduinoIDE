@@ -135,10 +135,11 @@ Web server robustness:
 - Serial debug output logs source refreshes, source picks, and each text segment started for scrolling.
 - Serial `n` command forces immediate advance to the next scroll item for faster validation.
 - Sports backend JSON fields `home/away.score` and `detail` are parsed and included in the scrolled text.
+- Sports backend JSON fields `home/away.teamColor` should be used for team-name color tags when available.
 - Sports playback should emit one complete line per item (matchup + score/start detail), not split title/description phases.
 - Scheduled/future games should omit score values; scored games should include scores inline.
 - Winning score should render green and losing score red; tied scores remain base color.
-- Base RSS item color rotates by item; renderer supports inline color tags for score-only coloring.
+- Base RSS item color rotates by item; renderer supports inline color tags for team names and score-only coloring.
 - Boot transition now re-queues weather so the first post-loading RSS segment is weather.
 - Time sync now uses timezone-aware NTP setup (`configTzTime`) for Eastern output correctness.
 - Config mode can now be toggled from either BOOT pin or external encoder button on GPIO35 (active-low).

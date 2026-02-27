@@ -128,6 +128,60 @@ bool extractTeamName(JsonVariantConst value, String& out) {
   return false;
 }
 
+bool normalizeHexColorForTag(const String& rawColor, String& outHex) {
+  String value = rawColor;
+  value.trim();
+  if (value.length() == 0) {
+    return false;
+  }
+  if (value[0] == '#') {
+    value.remove(0, 1);
+  }
+  if (value.length() != 6) {
+    return false;
+  }
+  for (size_t i = 0; i < value.length(); i++) {
+    const char c = value[i];
+    const bool isHex = (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') ||
+                       (c >= 'A' && c <= 'F');
+    if (!isHex) {
+      return false;
+    }
+  }
+  value.toUpperCase();
+  outHex = value;
+  return true;
+}
+
+bool extractTeamColor(JsonVariantConst value, String& outHex) {
+  outHex = "";
+  if (value.isNull()) {
+    return false;
+  }
+  if (value.is<const char*>()) {
+    return normalizeHexColorForTag(value.as<const char*>(), outHex);
+  }
+  if (!value.is<JsonObjectConst>()) {
+    return false;
+  }
+
+  JsonObjectConst obj = value.as<JsonObjectConst>();
+  String candidate;
+  if (readStringField(obj, "teamColor", candidate) ||
+      readStringField(obj, "color", candidate) ||
+      readStringField(obj, "primaryColor", candidate)) {
+    if (normalizeHexColorForTag(candidate, outHex)) {
+      return true;
+    }
+  }
+
+  JsonVariantConst team = obj["team"];
+  if (!team.isNull()) {
+    return extractTeamColor(team, outHex);
+  }
+  return false;
+}
+
 bool extractScoreText(JsonVariantConst value, String& out) {
   if (value.isNull()) {
     return false;
@@ -215,10 +269,21 @@ String colorTagWrap(const String& text, const char* hexColor) {
 }
 
 void formatSportsHeadline(const String& awayName, const String& homeName,
+                          const String& awayTeamColorHex,
+                          const String& homeTeamColorHex,
                           const String& awayScore, const String& homeScore,
                           bool showScores, String& outTitle) {
+  String awayNameDisplay = awayName;
+  if (awayTeamColorHex.length() > 0) {
+    awayNameDisplay = colorTagWrap(awayName, awayTeamColorHex.c_str());
+  }
+  String homeNameDisplay = homeName;
+  if (homeTeamColorHex.length() > 0) {
+    homeNameDisplay = colorTagWrap(homeName, homeTeamColorHex.c_str());
+  }
+
   if (!showScores || awayScore.length() == 0 || homeScore.length() == 0) {
-    outTitle = awayName + " at " + homeName;
+    outTitle = awayNameDisplay + " at " + homeNameDisplay;
     return;
   }
 
@@ -236,8 +301,8 @@ void formatSportsHeadline(const String& awayName, const String& homeName,
         colorTagWrap(homeScore, (homeValue > awayValue) ? "00FF00" : "FF0000");
   }
 
-  outTitle = awayName + " " + awayScoreDisplay + " at " + homeName + " " +
-             homeScoreDisplay;
+  outTitle = awayNameDisplay + " " + awayScoreDisplay + " at " +
+             homeNameDisplay + " " + homeScoreDisplay;
 }
 
 void appendPart(String& base, const String& part, const char* separator) {
@@ -299,10 +364,14 @@ bool extractEspnEvent(JsonObjectConst obj, String& outTitle, String& outDescript
   String homeName;
   String awayScore;
   String homeScore;
+  String awayTeamColorHex;
+  String homeTeamColorHex;
   String firstName;
   String secondName;
   String firstScore;
   String secondScore;
+  String firstColorHex;
+  String secondColorHex;
   bool haveFirst = false;
   bool haveSecond = false;
 
@@ -320,6 +389,11 @@ bool extractEspnEvent(JsonObjectConst obj, String& outTitle, String& outDescript
 
     String score;
     extractScoreText(competitor["score"], score);
+    String teamColorHex;
+    extractTeamColor(competitor["team"], teamColorHex);
+    if (teamColorHex.length() == 0) {
+      extractTeamColor(competitor, teamColorHex);
+    }
 
     String homeAway;
     readStringField(competitor, "homeAway", homeAway);
@@ -328,18 +402,22 @@ bool extractEspnEvent(JsonObjectConst obj, String& outTitle, String& outDescript
     if (homeAway == "away") {
       awayName = name;
       awayScore = score;
+      awayTeamColorHex = teamColorHex;
     } else if (homeAway == "home") {
       homeName = name;
       homeScore = score;
+      homeTeamColorHex = teamColorHex;
     }
 
     if (!haveFirst && name.length() > 0) {
       firstName = name;
       firstScore = score;
+      firstColorHex = teamColorHex;
       haveFirst = true;
     } else if (!haveSecond && name.length() > 0) {
       secondName = name;
       secondScore = score;
+      secondColorHex = teamColorHex;
       haveSecond = true;
     }
   }
@@ -350,8 +428,10 @@ bool extractEspnEvent(JsonObjectConst obj, String& outTitle, String& outDescript
     }
     awayName = firstName;
     awayScore = firstScore;
+    awayTeamColorHex = firstColorHex;
     homeName = secondName;
     homeScore = secondScore;
+    homeTeamColorHex = secondColorHex;
   }
 
   String status;
@@ -377,8 +457,8 @@ bool extractEspnEvent(JsonObjectConst obj, String& outTitle, String& outDescript
 
   const bool showScores = awayScore.length() > 0 && homeScore.length() > 0 &&
                           !(looksLikeScheduledDetail(status) && !isLive);
-  formatSportsHeadline(awayName, homeName, awayScore, homeScore, showScores,
-                       outTitle);
+  formatSportsHeadline(awayName, homeName, awayTeamColorHex, homeTeamColorHex,
+                       awayScore, homeScore, showScores, outTitle);
   outDescription = status;
 
   return outTitle.length() > 0;
@@ -389,6 +469,8 @@ bool extractHomeAwayPair(JsonObjectConst obj, String& outTitle, String& outDescr
   String homeName;
   String awayScore;
   String homeScore;
+  String awayTeamColorHex;
+  String homeTeamColorHex;
 
   const char* awayNameKeys[] = {"away_team", "away", "visitor", "team1"};
   const char* homeNameKeys[] = {"home_team", "home", "host", "team2"};
@@ -396,6 +478,10 @@ bool extractHomeAwayPair(JsonObjectConst obj, String& outTitle, String& outDescr
                                  "score_away",  "team1_score",  "away_points"};
   const char* homeScoreKeys[] = {"home_score",  "homeScore",    "host_score",
                                  "score_home",  "team2_score",  "home_points"};
+  const char* awayColorKeys[] = {"away_team_color", "awayColor", "visitor_color",
+                                 "team1Color",      "away_color"};
+  const char* homeColorKeys[] = {"home_team_color", "homeColor", "host_color",
+                                 "team2Color",      "home_color"};
 
   for (const char* key : awayNameKeys) {
     if (extractTeamName(obj[key], awayName)) {
@@ -404,6 +490,20 @@ bool extractHomeAwayPair(JsonObjectConst obj, String& outTitle, String& outDescr
   }
   for (const char* key : homeNameKeys) {
     if (extractTeamName(obj[key], homeName)) {
+      break;
+    }
+  }
+  for (const char* key : awayColorKeys) {
+    String candidate;
+    if (readStringField(obj, key, candidate) &&
+        normalizeHexColorForTag(candidate, awayTeamColorHex)) {
+      break;
+    }
+  }
+  for (const char* key : homeColorKeys) {
+    String candidate;
+    if (readStringField(obj, key, candidate) &&
+        normalizeHexColorForTag(candidate, homeTeamColorHex)) {
       break;
     }
   }
@@ -417,6 +517,12 @@ bool extractHomeAwayPair(JsonObjectConst obj, String& outTitle, String& outDescr
       extractTeamName(teams[1], t2);
       if (awayName.length() == 0) awayName = t1;
       if (homeName.length() == 0) homeName = t2;
+      if (awayTeamColorHex.length() == 0) {
+        extractTeamColor(teams[0], awayTeamColorHex);
+      }
+      if (homeTeamColorHex.length() == 0) {
+        extractTeamColor(teams[1], homeTeamColorHex);
+      }
     }
   }
 
@@ -440,10 +546,16 @@ bool extractHomeAwayPair(JsonObjectConst obj, String& outTitle, String& outDescr
   if (awayScore.length() == 0 && obj["away"].is<JsonObjectConst>()) {
     JsonObjectConst awayObj = obj["away"].as<JsonObjectConst>();
     extractScoreText(awayObj["score"], awayScore);
+    if (awayTeamColorHex.length() == 0) {
+      extractTeamColor(awayObj, awayTeamColorHex);
+    }
   }
   if (homeScore.length() == 0 && obj["home"].is<JsonObjectConst>()) {
     JsonObjectConst homeObj = obj["home"].as<JsonObjectConst>();
     extractScoreText(homeObj["score"], homeScore);
+    if (homeTeamColorHex.length() == 0) {
+      extractTeamColor(homeObj, homeTeamColorHex);
+    }
   }
 
   String detail;
@@ -460,8 +572,8 @@ bool extractHomeAwayPair(JsonObjectConst obj, String& outTitle, String& outDescr
 
   const bool showScores = awayScore.length() > 0 && homeScore.length() > 0 &&
                           !(looksLikeScheduledDetail(detail) && !isLive);
-  formatSportsHeadline(awayName, homeName, awayScore, homeScore, showScores,
-                       outTitle);
+  formatSportsHeadline(awayName, homeName, awayTeamColorHex, homeTeamColorHex,
+                       awayScore, homeScore, showScores, outTitle);
   outDescription = detail;
   return true;
 }

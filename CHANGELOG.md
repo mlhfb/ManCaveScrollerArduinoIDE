@@ -77,6 +77,7 @@ All notable changes to this project are documented here.
 - Weather API URL/key source moved from hardcoded runtime constant to `APP_WEATHER_API_URL` from local `include/Secrets.h`.
 - Interstitial cycle order is now `time, weather, message1, message2, ...` after every 6 displayed RSS/sports items.
 - Time interstitial format is now uppercase Eastern 24-hour style: `THU FEB 26 -- 15:48`.
+- Sports team names now use backend JSON `teamColor` values (`home.teamColor` / `away.teamColor`) when present.
 
 ### Fixed
 - Resolved lack of noticeable speed impact by widening delay profile and enforcing top speed delay `0 ms`.
@@ -101,3 +102,4 @@ All notable changes to this project are documented here.
 - RSS base message color now rotates per item instead of staying fixed to source index.
 - Fixed startup sequencing where weather-first playback could be consumed before loading-mode completed; weather is now re-queued immediately after boot refresh transition.
 - Fixed Eastern time display mismatch (`UTC` suffix/offset confusion) by switching to timezone-aware NTP sync via `configTzTime`.
+- Preserved winner/loser score coloring and base text color cycling while adding team-name colorization from backend team colors.
