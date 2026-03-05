@@ -19,6 +19,14 @@ constexpr uint8_t APP_SCROLL_PIXEL_STEP_MIN = 1;
 constexpr uint8_t APP_SCROLL_PIXEL_STEP_MAX = 3;
 constexpr uint8_t APP_SCROLL_PIXEL_STEP_DEFAULT = 1;
 
+#ifndef APP_FIRMWARE_VERSION
+#define APP_FIRMWARE_VERSION "0.1.0"
+#endif
+
+#ifndef APP_OTA_MANIFEST_URL
+#define APP_OTA_MANIFEST_URL ""
+#endif
+
 constexpr uint16_t APP_SCROLL_DELAY_BY_SPEED_MS[10] = {
     120,  // speed 1
     95,   // speed 2

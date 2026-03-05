@@ -3,6 +3,7 @@
 #include <LittleFS.h>
 #include <WebServer.h>
 
+#include "OtaService.h"
 #include "RssRuntime.h"
 
 namespace {
@@ -14,6 +15,7 @@ WebService::WebService(SettingsStore& store, WifiService& wifiService)
       _store(store),
       _wifiService(wifiService),
       _rssRuntime(nullptr),
+      _otaService(nullptr),
       _onSettingsChanged(nullptr),
       _onWifiConnectRequested(nullptr),
       _onFactoryResetRequested(nullptr),
@@ -70,6 +72,8 @@ void WebService::setOnExitConfigRequested(VoidCallback cb) {
 
 void WebService::setRssRuntime(RssRuntime* rssRuntime) { _rssRuntime = rssRuntime; }
 
+void WebService::setOtaService(OtaService* otaService) { _otaService = otaService; }
+
 void WebService::registerRoutes() {
   _server->on("/", HTTP_GET, [this]() { handleRoot(); });
   _server->on("/favicon.ico", HTTP_GET, [this]() { _server->send(204, "text/plain", ""); });
@@ -86,6 +90,9 @@ void WebService::registerRoutes() {
   _server->on("/api/wifi", HTTP_POST, [this]() { handleWifi(); });
   _server->on("/api/advanced", HTTP_POST, [this]() { handleAdvanced(); });
   _server->on("/api/rss", HTTP_POST, [this]() { handleRss(); });
+  _server->on("/api/ota/status", HTTP_GET, [this]() { handleOtaStatus(); });
+  _server->on("/api/ota/check", HTTP_POST, [this]() { handleOtaCheck(); });
+  _server->on("/api/ota/update", HTTP_POST, [this]() { handleOtaUpdate(); });
   _server->on("/api/exit-config", HTTP_POST, [this]() { handleExitConfig(); });
   _server->on("/api/factory-reset", HTTP_POST, [this]() { handleFactoryReset(); });
   _server->onNotFound([this]() { handleNotFound(); });
@@ -398,6 +405,81 @@ void WebService::handleRss() {
   }
   if (_onSettingsChanged) _onSettingsChanged(s);
   sendStatusMessage("RSS settings updated");
+}
+
+void WebService::handleOtaStatus() const {
+  if (_otaService == nullptr) {
+    sendError("OTA service unavailable", 503);
+    return;
+  }
+
+  OtaStatusSnapshot snapshot = _otaService->status();
+  DynamicJsonDocument doc(512);
+  doc["state"] = _otaService->stateString();
+  doc["current_version"] = snapshot.currentVersion;
+  doc["available_version"] = snapshot.availableVersion;
+  doc["progress_percent"] = snapshot.progressPercent;
+  doc["last_error"] = snapshot.lastError;
+  sendJson(doc, 200);
+}
+
+void WebService::handleOtaCheck() {
+  if (_otaService == nullptr) {
+    sendError("OTA service unavailable", 503);
+    return;
+  }
+
+  String manifestUrl;
+  String body = readBody();
+  if (body.length() > 0) {
+    DynamicJsonDocument doc(1024);
+    DeserializationError err = deserializeJson(doc, body);
+    if (err) {
+      sendError("Invalid JSON");
+      return;
+    }
+    if (!doc["manifest_url"].isNull()) {
+      manifestUrl = doc["manifest_url"].as<String>();
+      manifestUrl.trim();
+    }
+  }
+
+  const bool ok = _otaService->checkForUpdate(
+      manifestUrl.length() > 0 ? manifestUrl.c_str() : nullptr);
+  OtaStatusSnapshot snapshot = _otaService->status();
+  DynamicJsonDocument out(512);
+  out["state"] = _otaService->stateString();
+  out["current_version"] = snapshot.currentVersion;
+  out["available_version"] = snapshot.availableVersion;
+  out["progress_percent"] = snapshot.progressPercent;
+  out["last_error"] = snapshot.lastError;
+  sendJson(out, ok ? 200 : 400);
+}
+
+void WebService::handleOtaUpdate() {
+  if (_otaService == nullptr) {
+    sendError("OTA service unavailable", 503);
+    return;
+  }
+
+  DynamicJsonDocument doc(512);
+  if (!parseBodyJson(doc)) {
+    sendError("Invalid JSON");
+    return;
+  }
+
+  const bool confirm = doc["confirm"] | false;
+  const bool ok = _otaService->startUpdate(confirm);
+  OtaStatusSnapshot snapshot = _otaService->status();
+
+  DynamicJsonDocument out(512);
+  out["state"] = _otaService->stateString();
+  out["current_version"] = snapshot.currentVersion;
+  out["available_version"] = snapshot.availableVersion;
+  out["progress_percent"] = snapshot.progressPercent;
+  out["last_error"] = snapshot.lastError;
+  out["backup_requested"] = doc["backup"] | false;
+  sendJson(out, ok ? 200 : 400);
 }
 
 void WebService::handleFactoryReset() {

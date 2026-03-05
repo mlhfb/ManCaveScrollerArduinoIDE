@@ -9,6 +9,7 @@
 
 class WebServer;
 class RssRuntime;
+class OtaService;
 
 class WebService {
 public:
@@ -28,6 +29,7 @@ public:
   void setOnFactoryResetRequested(VoidCallback cb);
   void setOnExitConfigRequested(VoidCallback cb);
   void setRssRuntime(RssRuntime* rssRuntime);
+  void setOtaService(OtaService* otaService);
 
 private:
   void registerRoutes();
@@ -48,6 +50,9 @@ private:
   void handleWifi();
   void handleAdvanced();
   void handleRss();
+  void handleOtaStatus() const;
+  void handleOtaCheck();
+  void handleOtaUpdate();
   void handleExitConfig();
   void handleFactoryReset();
   void handleNotFound() const;
@@ -56,6 +61,7 @@ private:
   SettingsStore& _store;
   WifiService& _wifiService;
   RssRuntime* _rssRuntime;
+  OtaService* _otaService;
   SettingsChangedCallback _onSettingsChanged;
   VoidCallback _onWifiConnectRequested;
   VoidCallback _onFactoryResetRequested;

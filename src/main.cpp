@@ -4,6 +4,7 @@
 #include "AppTypes.h"
 #include "ContentScheduler.h"
 #include "DisplayPanel.h"
+#include "OtaService.h"
 #include "RssRuntime.h"
 #include "Scroller.h"
 #include "SettingsStore.h"
@@ -22,6 +23,7 @@ constexpr const char* kBootLoadingText = "Now Loading...";
 
 SettingsStore gSettingsStore;
 WifiService gWifiService;
+OtaService gOtaService(gWifiService);
 RssRuntime gRssRuntime(gSettingsStore, gWifiService);
 DisplayPanel gDisplay(APP_MATRIX_WIDTH, APP_MATRIX_HEIGHT);
 Scroller gScroller(gDisplay);
@@ -462,8 +464,10 @@ void setup() {
   gWebService.setOnFactoryResetRequested(onFactoryResetRequested);
   gWebService.setOnExitConfigRequested(onExitConfigRequested);
   gWebService.setRssRuntime(&gRssRuntime);
+  gWebService.setOtaService(&gOtaService);
 
   gWifiService.begin();
+  gOtaService.begin();
   if (!gRssRuntime.begin()) {
     Serial.println("RSS runtime init failed");
   }
@@ -513,6 +517,7 @@ void setup() {
 }
 
 void loop() {
+  gOtaService.tick();
   handleSerialInput();
   handleConfigButton();
   if (gExitConfigRequested) {
