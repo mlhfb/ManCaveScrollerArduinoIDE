@@ -55,6 +55,12 @@ All notable changes to this project are documented here.
   - `POST /api/ota/update`
 - OTA controls in advanced web UI (manifest URL, check/update actions, OTA status panel).
 - Backend integration guide: `OTA_BACKEND_HOWTO.md`.
+- OTA release automation script: `scripts/release_ota.ps1`.
+- LittleFS OTA release automation script: `scripts/littleFSOTA.ps1`.
+- LittleFS OTA install support in manifest/API flow (`littlefs.version`, `littlefs.url`, checksums, size).
+- Settings backup/restore guard for LittleFS OTA:
+  - backup `/config/settings.json` to NVS before filesystem flash
+  - restore settings file on next boot after LittleFS OTA
 
 ### Changed
 - Scroll speed now adjusts only `FastLED.delay()` timing, with default `speed=10` mapping to `0 ms`.
@@ -91,6 +97,9 @@ All notable changes to this project are documented here.
 - Secrets example now includes `APP_OTA_MANIFEST_URL` template macro.
 - Advanced settings now persist OTA manifest URL (`ota_manifest_url`) and restore it into UI.
 - Added LittleFS default settings seed file (`data/config/settings.json`) for baseline WiFi/RSS/OTA defaults.
+- Boot flow now performs OTA check at startup (with saved WiFi), installs update when available, and reboots.
+- Startup OTA install displays static repeating `Updating Firmware ` text across the LED panel.
+- Service/config button pin updated to GPIO 25 (active-low) based on legacy hardware mapping.
 
 ### Fixed
 - Resolved lack of noticeable speed impact by widening delay profile and enforcing top speed delay `0 ms`.
@@ -118,3 +127,4 @@ All notable changes to this project are documented here.
 - Preserved winner/loser score coloring and base text color cycling while adding team-name colorization from backend team colors.
 - Fixed OTA manifest URL parsing by accepting bare host paths and normalizing to `https://.../manifest.json`.
 - Fixed OTA MD5 validation interoperability by normalizing manifest MD5 hex case.
+- Fixed field service button behavior by matching legacy GPIO 25 wiring instead of GPIO 35.

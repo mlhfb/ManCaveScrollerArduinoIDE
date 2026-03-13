@@ -17,15 +17,20 @@ public:
   bool installAvailableUpdate();
 
   bool hasPendingUpdate() const;
+  bool hasPendingFirmwareUpdate() const;
+  bool hasPendingLittleFsUpdate() const;
   bool hasError() const;
   const char* lastError() const;
 
   const char* currentVersion() const;
   const char* availableVersion() const;
+  const char* currentLittleFsVersion() const;
+  const char* availableLittleFsVersion() const;
   const char* stateString() const;
   const char* defaultManifestUrl() const;
   const char* lastManifestUrl() const;
   const char* availableFirmwareUrl() const;
+  const char* availableLittleFsUrl() const;
 
   void appendStatus(JsonObject obj) const;
 
@@ -47,6 +52,12 @@ private:
   static String normalizeHttpUrl(String url);
   static String normalizeMd5Hex(String value);
   bool fetchManifest(const String& manifestUrl);
+  bool installAvailableFirmwareUpdate();
+  bool installAvailableLittleFsUpdate();
+  bool backupSettingsForLittleFsUpdate();
+  void persistCurrentLittleFsVersion(const String& version);
+  void clearPendingSettingsBackupFlag();
+  bool loadCurrentLittleFsVersion();
   void setError(const String& message);
   void clearError();
 
@@ -60,7 +71,14 @@ private:
   String _firmwareMd5;
   String _firmwareSha256;
   uint32_t _firmwareSize;
-  bool _hasPendingUpdate;
+  bool _hasPendingFirmwareUpdate;
+  String _currentLittleFsVersion;
+  String _availableLittleFsVersion;
+  String _littleFsUrl;
+  String _littleFsMd5;
+  String _littleFsSha256;
+  uint32_t _littleFsSize;
+  bool _hasPendingLittleFsUpdate;
   String _lastError;
   uint32_t _lastCheckedMs;
 };

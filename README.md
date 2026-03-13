@@ -8,11 +8,16 @@ After web UI changes, run `pio run -t uploadfs` so the device serves the updated
 OTA status:
 - Partition table is now OTA-capable (`ota_0`/`ota_1` + `otadata` + resized LittleFS).
 - OTA API/UI is implemented (`check`, `status`, `install`).
+- On boot, firmware attempts OTA check/install when WiFi credentials are present.
 - OTA manifest URL persists in settings (`ota_manifest_url`) and is editable in Advanced settings.
 - OTA client normalizes bare manifest host paths and accepts uppercase/lowercase MD5 from manifest.
+- OTA now supports optional LittleFS payloads (`littlefs.version` + `littlefs.url`) in manifest.
+- Before LittleFS OTA, device backs up `/config/settings.json` to NVS and restores it on next boot.
 - One-time USB migration flash is required before OTA updates can be used on existing devices.
 - Planning details: `OTA_DRAFT.md`
 - Backend/server setup: `OTA_BACKEND_HOWTO.md`
+- Release helper script: `scripts/release_ota.ps1`
+- LittleFS release helper script: `scripts/littleFSOTA.ps1`
 
 ## Local Secrets
 - Weather API URL/key is read from `APP_WEATHER_API_URL` in local `include/Secrets.h`.
@@ -33,7 +38,7 @@ OTA status:
   - AP bootstrap when no saved STA credentials
   - STA connection flow with timeout/retry
   - BOOT button toggle for config mode
-  - GPIO35 external encoder button toggle for config mode (active-low; same behavior as BOOT)
+  - GPIO25 external service/encoder button toggle for config mode (active-low; same behavior as BOOT)
   - captive DNS redirect in AP mode
   - WiFi radio off during normal scrolling mode to reduce artifacts
   - Outside config mode, runtime suspends WiFi/web/RSS refresh tasks and prioritizes scroll output
@@ -72,7 +77,7 @@ OTA status:
 - Web API includes OTA endpoints: `/api/ota/status`, `/api/ota/check`, `/api/ota/update`.
 - Web UI served from LittleFS (`/web/index.html`) for full setup:
   - message editing (5 slots)
-  - appearance sliders
+  - appearance speed/brightness numeric inputs with dropdown selectors
   - WiFi credentials
   - WiFi password show/hide toggle button
   - advanced panel settings
@@ -80,6 +85,7 @@ OTA status:
   - one-click `Save + Exit Config Mode` action
   - playback-order randomization toggle (`Randomize RSS/sports item order (shuffle, OFF by default)`)
   - OTA panel for manifest URL, update check, and install trigger
+    - OTA status includes firmware and LittleFS versions/update flags
   - factory reset confirmation
   - non-destructive status refresh loop (does not overwrite unsaved form edits while configuring)
   - UI build stamp and no-cache root response headers to reduce stale page confusion

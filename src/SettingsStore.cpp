@@ -1,13 +1,20 @@
 #include "SettingsStore.h"
 
+#include <memory>
+
 #include <ArduinoJson.h>
 #include <LittleFS.h>
+#include <Preferences.h>
 
 #include "AppConfig.h"
 
 namespace {
 const char* kSettingsPath = "/config/settings.json";
 const char* kDefaultMessagesPath = "/config/default_messages.json";
+const char* kSettingsBackupNamespace = "ota_settings";
+const char* kBackupPendingKey = "pending";
+const char* kBackupLengthKey = "len";
+const char* kBackupBlobKey = "blob";
 
 void safeCopy(char* dst, size_t dstLen, const char* src) {
   if (dst == nullptr || dstLen == 0) {
@@ -19,12 +26,74 @@ void safeCopy(char* dst, size_t dstLen, const char* src) {
   }
   strlcpy(dst, src, dstLen);
 }
+
+void clearSettingsBackup() {
+  Preferences prefs;
+  if (!prefs.begin(kSettingsBackupNamespace, false)) {
+    return;
+  }
+  prefs.remove(kBackupBlobKey);
+  prefs.remove(kBackupLengthKey);
+  prefs.putBool(kBackupPendingKey, false);
+  prefs.end();
+}
+
+bool restoreSettingsFromBackupIfPending() {
+  Preferences prefs;
+  if (!prefs.begin(kSettingsBackupNamespace, true)) {
+    return false;
+  }
+
+  const bool pending = prefs.getBool(kBackupPendingKey, false);
+  if (!pending) {
+    prefs.end();
+    return false;
+  }
+
+  const uint32_t expectedLen = prefs.getUInt(kBackupLengthKey, 0);
+  const size_t blobLen = prefs.getBytesLength(kBackupBlobKey);
+  if (expectedLen == 0 || blobLen != expectedLen) {
+    prefs.end();
+    clearSettingsBackup();
+    return false;
+  }
+
+  std::unique_ptr<uint8_t[]> data(new (std::nothrow) uint8_t[blobLen]);
+  if (!data) {
+    prefs.end();
+    return false;
+  }
+
+  const size_t readLen = prefs.getBytes(kBackupBlobKey, data.get(), blobLen);
+  prefs.end();
+  if (readLen != blobLen) {
+    clearSettingsBackup();
+    return false;
+  }
+
+  LittleFS.mkdir("/config");
+  File file = LittleFS.open(kSettingsPath, "w");
+  if (!file) {
+    return false;
+  }
+
+  const size_t written = file.write(data.get(), blobLen);
+  file.close();
+  if (written != blobLen) {
+    return false;
+  }
+
+  clearSettingsBackup();
+  return true;
+}
 }  // namespace
 
 bool SettingsStore::begin() {
   if (!LittleFS.begin(true, "/littlefs", 10, "littlefs")) {
     return false;
   }
+
+  restoreSettingsFromBackupIfPending();
 
   loadDefaults();
   if (!load()) {

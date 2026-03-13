@@ -68,7 +68,6 @@
       cursor: pointer;
       font-size: 1rem;
     }
-    input[type=range] { width: 100%; }
     input[type=color] {
       width: 44px;
       height: 34px;
@@ -156,21 +155,22 @@
       padding: 6px;
       background: #0f172a;
     }
-    #speedVal, #brightVal {
-      font-weight: bold;
-      color: #22d3ee;
-      font-size: 0.9rem;
+    .appearance-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 8px;
     }
   </style>
 </head>
 <body>
   <h1>ManCaveScroller</h1>
   <div style="text-align:center;font-size:0.72rem;color:#94a3b8;margin-top:-10px;margin-bottom:8px;">
-    UI build: 2026-03-12
+    UI build: 2026-03-13
   </div>
   <div id="status" class="status">Loading...</div>
 
-  <div id="mainView">
+    <div id="mainView">
     <div class="card">
       <h2>Messages</h2>
       <div id="messagePreview" class="preview"></div>
@@ -180,13 +180,17 @@
     <div class="card">
       <h2>Appearance</h2>
       <label>Speed (1..10)</label>
-      <input id="speed" type="range" min="1" max="10" value="10"
-             oninput="g('speedVal').textContent=this.value">
-      <div id="speedVal">10</div>
+      <div class="appearance-grid">
+        <input id="speed" type="number" min="1" max="10" step="1" value="10"
+               oninput="syncInputToSelect('speed', 1, 10)">
+        <select id="speedSelect" onchange="applySelectToInput('speed')"></select>
+      </div>
       <label>Brightness (0..255)</label>
-      <input id="brightness" type="range" min="0" max="255" value="72"
-             oninput="g('brightVal').textContent=this.value">
-      <div id="brightVal">72</div>
+      <div class="appearance-grid">
+        <input id="brightness" type="number" min="0" max="255" step="1" value="72"
+               oninput="syncInputToSelect('brightness', 0, 255)">
+        <select id="brightnessSelect" onchange="applySelectToInput('brightness')"></select>
+      </div>
       <button class="btn" onclick="saveAppearance()">Save Appearance</button>
     </div>
 
@@ -324,6 +328,65 @@
       };
     }
 
+    function populateSelectRange(selectId, min, max) {
+      let html = "";
+      for (let v = min; v <= max; v++) {
+        html += "<option value=\"" + v + "\">" + v + "</option>";
+      }
+      g(selectId).innerHTML = html;
+    }
+
+    function initAppearanceControls() {
+      populateSelectRange("speedSelect", 1, 10);
+      populateSelectRange("brightnessSelect", 0, 255);
+      setAppearanceField("speed", 1, 10, 10, g("speed").value);
+      setAppearanceField("brightness", 0, 255, 72, g("brightness").value);
+    }
+
+    function syncInputToSelect(fieldId, min, max) {
+      const value = Number(g(fieldId).value);
+      if (!Number.isInteger(value)) {
+        return;
+      }
+      if (value < min || value > max) {
+        return;
+      }
+      g(fieldId + "Select").value = String(value);
+    }
+
+    function applySelectToInput(fieldId) {
+      g(fieldId).value = g(fieldId + "Select").value;
+    }
+
+    function setAppearanceField(fieldId, min, max, fallback, value) {
+      let next = Number(value);
+      if (!Number.isInteger(next)) {
+        next = fallback;
+      }
+      if (next < min) {
+        next = min;
+      }
+      if (next > max) {
+        next = max;
+      }
+      g(fieldId).value = String(next);
+      g(fieldId + "Select").value = String(next);
+    }
+
+    function getValidatedAppearancePayload() {
+      const speed = Number(g("speed").value);
+      if (!Number.isInteger(speed) || speed < 1 || speed > 10) {
+        throw new Error("Speed must be an integer from 1 to 10");
+      }
+
+      const brightness = Number(g("brightness").value);
+      if (!Number.isInteger(brightness) || brightness < 0 || brightness > 255) {
+        throw new Error("Brightness must be an integer from 0 to 255");
+      }
+
+      return { speed, brightness };
+    }
+
     function renderMessagePreview() {
       let html = "";
       let shown = 0;
@@ -384,17 +447,27 @@
       const state = ota.state || "unknown";
       const currentVersion = ota.current_version || "unknown";
       const availableVersion = ota.available_version || "n/a";
+      const currentLittleFsVersion = ota.current_littlefs_version || "unknown";
+      const availableLittleFsVersion = ota.available_littlefs_version || "n/a";
       const hasUpdate = !!ota.has_update;
+      const hasFirmwareUpdate = !!ota.has_firmware_update;
+      const hasLittleFsUpdate = !!ota.has_littlefs_update;
       const errorText = ota.last_error ? ("<br><span style=\"color:#f87171\">error: " +
         String(ota.last_error).replace(/</g, "&lt;") + "</span>") : "";
       const fwSize = ota.firmware_size ? Number(ota.firmware_size) : 0;
+      const littleFsSize = ota.littlefs_size ? Number(ota.littlefs_size) : 0;
 
       g("otaStatus").innerHTML =
         "<b>state:</b> " + String(state).replace(/</g, "&lt;") +
         "<br><b>current:</b> " + String(currentVersion).replace(/</g, "&lt;") +
         "<br><b>available:</b> " + String(availableVersion).replace(/</g, "&lt;") +
+        "<br><b>current littlefs:</b> " + String(currentLittleFsVersion).replace(/</g, "&lt;") +
+        "<br><b>available littlefs:</b> " + String(availableLittleFsVersion).replace(/</g, "&lt;") +
         "<br><b>update ready:</b> " + hasUpdate +
+        "<br><b>firmware update:</b> " + hasFirmwareUpdate +
+        "<br><b>littlefs update:</b> " + hasLittleFsUpdate +
         "<br><b>firmware size:</b> " + (fwSize > 0 ? fwSize : "n/a") +
+        "<br><b>littlefs size:</b> " + (littleFsSize > 0 ? littleFsSize : "n/a") +
         errorText;
     }
 
@@ -439,10 +512,7 @@
 
     async function saveAppearance() {
       try {
-        const payload = {
-          speed: Number(g("speed").value),
-          brightness: Number(g("brightness").value)
-        };
+        const payload = getValidatedAppearancePayload();
         const result = await callApi("/api/appearance", "POST", payload);
         setStatus(result.status || "Appearance updated", true);
       } catch (err) {
@@ -562,12 +632,10 @@
       }
 
       try {
+        const appearancePayload = getValidatedAppearancePayload();
         setStatus("Saving settings and exiting config mode...", true);
         await callApi("/api/messages", "POST", { messages });
-        await callApi("/api/appearance", "POST", {
-          speed: Number(g("speed").value),
-          brightness: Number(g("brightness").value)
-        });
+        await callApi("/api/appearance", "POST", appearancePayload);
         await callApi("/api/wifi", "POST", {
           ssid: g("ssid").value,
           password: g("password").value
@@ -646,10 +714,8 @@
             messages.push({ text: "", r: 255, g: 255, b: 255, enabled: false });
           }
 
-          g("speed").value = status.speed ?? 10;
-          g("speedVal").textContent = status.speed ?? 10;
-          g("brightness").value = status.brightness ?? 72;
-          g("brightVal").textContent = status.brightness ?? 72;
+          setAppearanceField("speed", 1, 10, 10, status.speed);
+          setAppearanceField("brightness", 0, 255, 72, status.brightness);
           g("ssid").value = status.wifi_ssid ?? "";
           g("password").value = status.wifi_password ?? "";
           g("panelCols").value = status.panel_cols ?? 128;
@@ -681,6 +747,7 @@
       }
     }
 
+    initAppearanceControls();
     loadStatus();
     setInterval(() => loadStatus(false), 7000);
   </script>

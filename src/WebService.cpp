@@ -3,11 +3,14 @@
 #include <LittleFS.h>
 #include <WebServer.h>
 
+#include "AppConfig.h"
 #include "OtaService.h"
 #include "RssRuntime.h"
 
 namespace {
 const char* kUiPath = "/web/index.html";
+constexpr int kBrightnessMin = 0;
+constexpr int kBrightnessMax = 255;
 }
 
 WebService::WebService(SettingsStore& store, WifiService& wifiService)
@@ -205,10 +208,16 @@ void WebService::handleStatus() const {
     ota["state"] = "unavailable";
     ota["current_version"] = "unknown";
     ota["available_version"] = "";
+    ota["current_littlefs_version"] = "";
+    ota["available_littlefs_version"] = "";
     ota["manifest_url"] = "";
     ota["firmware_url"] = "";
     ota["firmware_size"] = 0;
+    ota["littlefs_url"] = "";
+    ota["littlefs_size"] = 0;
     ota["has_update"] = false;
+    ota["has_firmware_update"] = false;
+    ota["has_littlefs_update"] = false;
     ota["last_error"] = "";
     ota["wifi_connected"] = _wifiService.isConnected();
   }
@@ -295,8 +304,20 @@ void WebService::handleSpeed() {
     sendError("Invalid JSON");
     return;
   }
+
+  if (!doc["speed"].is<int>()) {
+    sendError("Speed must be an integer from 1 to 10");
+    return;
+  }
+
+  const int speed = doc["speed"].as<int>();
+  if (speed < APP_SCROLL_SPEED_MIN || speed > APP_SCROLL_SPEED_MAX) {
+    sendError("Speed must be between 1 and 10");
+    return;
+  }
+
   AppSettings& s = _store.mutableSettings();
-  s.speed = static_cast<uint8_t>(doc["speed"] | s.speed);
+  s.speed = static_cast<uint8_t>(speed);
   _store.save();
   if (_onSettingsChanged) _onSettingsChanged(s);
   sendStatusMessage("Speed updated");
@@ -308,8 +329,20 @@ void WebService::handleBrightness() {
     sendError("Invalid JSON");
     return;
   }
+
+  if (!doc["brightness"].is<int>()) {
+    sendError("Brightness must be an integer from 0 to 255");
+    return;
+  }
+
+  const int brightness = doc["brightness"].as<int>();
+  if (brightness < kBrightnessMin || brightness > kBrightnessMax) {
+    sendError("Brightness must be between 0 and 255");
+    return;
+  }
+
   AppSettings& s = _store.mutableSettings();
-  s.brightness = static_cast<uint8_t>(doc["brightness"] | s.brightness);
+  s.brightness = static_cast<uint8_t>(brightness);
   _store.save();
   if (_onSettingsChanged) _onSettingsChanged(s);
   sendStatusMessage("Brightness updated");
@@ -321,13 +354,43 @@ void WebService::handleAppearance() {
     sendError("Invalid JSON");
     return;
   }
+
   AppSettings& s = _store.mutableSettings();
+  bool changed = false;
+
   if (!doc["speed"].isNull()) {
-    s.speed = static_cast<uint8_t>(doc["speed"] | s.speed);
+    if (!doc["speed"].is<int>()) {
+      sendError("Speed must be an integer from 1 to 10");
+      return;
+    }
+    const int speed = doc["speed"].as<int>();
+    if (speed < APP_SCROLL_SPEED_MIN || speed > APP_SCROLL_SPEED_MAX) {
+      sendError("Speed must be between 1 and 10");
+      return;
+    }
+    s.speed = static_cast<uint8_t>(speed);
+    changed = true;
   }
+
   if (!doc["brightness"].isNull()) {
-    s.brightness = static_cast<uint8_t>(doc["brightness"] | s.brightness);
+    if (!doc["brightness"].is<int>()) {
+      sendError("Brightness must be an integer from 0 to 255");
+      return;
+    }
+    const int brightness = doc["brightness"].as<int>();
+    if (brightness < kBrightnessMin || brightness > kBrightnessMax) {
+      sendError("Brightness must be between 0 and 255");
+      return;
+    }
+    s.brightness = static_cast<uint8_t>(brightness);
+    changed = true;
   }
+
+  if (!changed) {
+    sendError("Missing 'speed' or 'brightness' field");
+    return;
+  }
+
   _store.save();
   if (_onSettingsChanged) _onSettingsChanged(s);
   sendStatusMessage("Appearance updated");
@@ -439,10 +502,16 @@ void WebService::handleOtaStatus() const {
     doc["state"] = "unavailable";
     doc["current_version"] = "unknown";
     doc["available_version"] = "";
+    doc["current_littlefs_version"] = "";
+    doc["available_littlefs_version"] = "";
     doc["manifest_url"] = "";
     doc["firmware_url"] = "";
     doc["firmware_size"] = 0;
+    doc["littlefs_url"] = "";
+    doc["littlefs_size"] = 0;
     doc["has_update"] = false;
+    doc["has_firmware_update"] = false;
+    doc["has_littlefs_update"] = false;
     doc["last_error"] = "OTA service not initialized";
     doc["wifi_connected"] = _wifiService.isConnected();
   }
@@ -471,8 +540,12 @@ void WebService::handleOtaCheck() {
   doc["status"] = "OTA check complete";
   doc["state"] = _otaService->stateString();
   doc["has_update"] = _otaService->hasPendingUpdate();
+  doc["has_firmware_update"] = _otaService->hasPendingFirmwareUpdate();
+  doc["has_littlefs_update"] = _otaService->hasPendingLittleFsUpdate();
   doc["current_version"] = _otaService->currentVersion();
   doc["available_version"] = _otaService->availableVersion();
+  doc["current_littlefs_version"] = _otaService->currentLittleFsVersion();
+  doc["available_littlefs_version"] = _otaService->availableLittleFsVersion();
   doc["manifest_url"] = _otaService->lastManifestUrl();
   sendJson(doc, 200);
 }
