@@ -3,6 +3,7 @@
 #include <LittleFS.h>
 #include <WebServer.h>
 
+#include "OtaService.h"
 #include "RssRuntime.h"
 
 namespace {
@@ -14,6 +15,7 @@ WebService::WebService(SettingsStore& store, WifiService& wifiService)
       _store(store),
       _wifiService(wifiService),
       _rssRuntime(nullptr),
+      _otaService(nullptr),
       _onSettingsChanged(nullptr),
       _onWifiConnectRequested(nullptr),
       _onFactoryResetRequested(nullptr),
@@ -70,6 +72,8 @@ void WebService::setOnExitConfigRequested(VoidCallback cb) {
 
 void WebService::setRssRuntime(RssRuntime* rssRuntime) { _rssRuntime = rssRuntime; }
 
+void WebService::setOtaService(OtaService* otaService) { _otaService = otaService; }
+
 void WebService::registerRoutes() {
   _server->on("/", HTTP_GET, [this]() { handleRoot(); });
   _server->on("/favicon.ico", HTTP_GET, [this]() { _server->send(204, "text/plain", ""); });
@@ -86,6 +90,9 @@ void WebService::registerRoutes() {
   _server->on("/api/wifi", HTTP_POST, [this]() { handleWifi(); });
   _server->on("/api/advanced", HTTP_POST, [this]() { handleAdvanced(); });
   _server->on("/api/rss", HTTP_POST, [this]() { handleRss(); });
+  _server->on("/api/ota/status", HTTP_GET, [this]() { handleOtaStatus(); });
+  _server->on("/api/ota/check", HTTP_POST, [this]() { handleOtaCheck(); });
+  _server->on("/api/ota/update", HTTP_POST, [this]() { handleOtaUpdate(); });
   _server->on("/api/exit-config", HTTP_POST, [this]() { handleExitConfig(); });
   _server->on("/api/factory-reset", HTTP_POST, [this]() { handleFactoryReset(); });
   _server->onNotFound([this]() { handleNotFound(); });
@@ -135,7 +142,7 @@ void WebService::handleRoot() const {
 
 void WebService::handleStatus() const {
   const AppSettings& s = _store.settings();
-  DynamicJsonDocument doc(6144);
+  DynamicJsonDocument doc(8192);
 
   JsonArray msgs = doc.createNestedArray("messages");
   for (size_t i = 0; i < APP_MAX_MESSAGES; i++) {
@@ -154,6 +161,7 @@ void WebService::handleStatus() const {
   doc["ip"] = _wifiService.ip();
   doc["wifi_ssid"] = s.wifiSsid;
   doc["wifi_password"] = s.wifiPassword;
+  doc["ota_manifest_url"] = s.otaManifestUrl;
 
   doc["rss_enabled"] = s.rssEnabled;
   doc["rss_url"] = s.rssUrl;
@@ -188,6 +196,21 @@ void WebService::handleStatus() const {
   } else {
     doc["rss_source_count"] = 0;
     doc.createNestedArray("rss_sources");
+  }
+
+  JsonObject ota = doc.createNestedObject("ota");
+  if (_otaService != nullptr) {
+    _otaService->appendStatus(ota);
+  } else {
+    ota["state"] = "unavailable";
+    ota["current_version"] = "unknown";
+    ota["available_version"] = "";
+    ota["manifest_url"] = "";
+    ota["firmware_url"] = "";
+    ota["firmware_size"] = 0;
+    ota["has_update"] = false;
+    ota["last_error"] = "";
+    ota["wifi_connected"] = _wifiService.isConnected();
   }
 
   sendJson(doc, 200);
@@ -341,6 +364,14 @@ void WebService::handleAdvanced() {
   if (panel == 32 || panel == 64 || panel == 96 || panel == 128) {
     s.panelCols = panel;
   }
+  if (!doc["ota_manifest_url"].isNull()) {
+    strlcpy(s.otaManifestUrl, doc["ota_manifest_url"] | s.otaManifestUrl,
+            sizeof(s.otaManifestUrl));
+  }
+  if (!doc["otaManifestUrl"].isNull()) {
+    strlcpy(s.otaManifestUrl, doc["otaManifestUrl"] | s.otaManifestUrl,
+            sizeof(s.otaManifestUrl));
+  }
   _store.save();
   if (_onSettingsChanged) _onSettingsChanged(s);
   sendStatusMessage("Advanced settings updated");
@@ -398,6 +429,89 @@ void WebService::handleRss() {
   }
   if (_onSettingsChanged) _onSettingsChanged(s);
   sendStatusMessage("RSS settings updated");
+}
+
+void WebService::handleOtaStatus() const {
+  DynamicJsonDocument doc(1024);
+  if (_otaService != nullptr) {
+    _otaService->appendStatus(doc.to<JsonObject>());
+  } else {
+    doc["state"] = "unavailable";
+    doc["current_version"] = "unknown";
+    doc["available_version"] = "";
+    doc["manifest_url"] = "";
+    doc["firmware_url"] = "";
+    doc["firmware_size"] = 0;
+    doc["has_update"] = false;
+    doc["last_error"] = "OTA service not initialized";
+    doc["wifi_connected"] = _wifiService.isConnected();
+  }
+  sendJson(doc, 200);
+}
+
+void WebService::handleOtaCheck() {
+  if (_otaService == nullptr) {
+    sendError("OTA service not initialized", 500);
+    return;
+  }
+
+  DynamicJsonDocument body(512);
+  const bool hasBody = parseBodyJson(body);
+  const char* manifestUrl = nullptr;
+  if (hasBody && !body["manifest_url"].isNull()) {
+    manifestUrl = body["manifest_url"];
+  }
+
+  if (!_otaService->checkForUpdate(manifestUrl)) {
+    sendError(_otaService->lastError(), 400);
+    return;
+  }
+
+  DynamicJsonDocument doc(1024);
+  doc["status"] = "OTA check complete";
+  doc["state"] = _otaService->stateString();
+  doc["has_update"] = _otaService->hasPendingUpdate();
+  doc["current_version"] = _otaService->currentVersion();
+  doc["available_version"] = _otaService->availableVersion();
+  doc["manifest_url"] = _otaService->lastManifestUrl();
+  sendJson(doc, 200);
+}
+
+void WebService::handleOtaUpdate() {
+  if (_otaService == nullptr) {
+    sendError("OTA service not initialized", 500);
+    return;
+  }
+
+  DynamicJsonDocument body(512);
+  const bool hasBody = parseBodyJson(body);
+  const char* manifestUrl = nullptr;
+  if (hasBody && !body["manifest_url"].isNull()) {
+    manifestUrl = body["manifest_url"];
+  }
+
+  // If a manifest URL was supplied, refresh update metadata before install.
+  if (manifestUrl != nullptr && manifestUrl[0] != '\0') {
+    if (!_otaService->checkForUpdate(manifestUrl)) {
+      sendError(_otaService->lastError(), 400);
+      return;
+    }
+  }
+
+  if (!_otaService->hasPendingUpdate()) {
+    sendError("No pending OTA update available", 400);
+    return;
+  }
+  if (!_otaService->installAvailableUpdate()) {
+    sendError(_otaService->lastError(), 400);
+    return;
+  }
+
+  DynamicJsonDocument doc(256);
+  doc["status"] = "OTA installed; rebooting";
+  sendJson(doc, 200);
+  delay(200);
+  ESP.restart();
 }
 
 void WebService::handleFactoryReset() {

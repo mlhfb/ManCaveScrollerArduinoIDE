@@ -5,11 +5,22 @@ Repository for a clean Arduino-framework rewrite of ManCaveScroller on ESP32.
 Current status: Phase 9 implementation baseline is buildable (`pio run`, `pio run -t buildfs`).
 After web UI changes, run `pio run -t uploadfs` so the device serves the updated `data/web/index.html`.
 
+OTA status:
+- Partition table is now OTA-capable (`ota_0`/`ota_1` + `otadata` + resized LittleFS).
+- OTA API/UI is implemented (`check`, `status`, `install`).
+- OTA manifest URL persists in settings (`ota_manifest_url`) and is editable in Advanced settings.
+- OTA client normalizes bare manifest host paths and accepts uppercase/lowercase MD5 from manifest.
+- One-time USB migration flash is required before OTA updates can be used on existing devices.
+- Planning details: `OTA_DRAFT.md`
+- Backend/server setup: `OTA_BACKEND_HOWTO.md`
+
 ## Local Secrets
 - Weather API URL/key is read from `APP_WEATHER_API_URL` in local `include/Secrets.h`.
+- OTA manifest URL default can be set locally via `APP_OTA_MANIFEST_URL` in `include/Secrets.h`.
 - `include/Secrets.h` is git-ignored and will not be pushed.
 - Use `include/Secrets.example.h` as the template for creating your local secrets file.
 - If `APP_WEATHER_API_URL` is not set, weather interstitials show `Weather unavailable`.
+- Baseline runtime defaults uploaded via LittleFS live in `data/config/settings.json`.
 
 ## Current Firmware Status
 - Display pipeline: `FastLED` + `FastLED_NeoMatrix` on ESP32 Arduino.
@@ -58,6 +69,7 @@ After web UI changes, run `pio run -t uploadfs` so the device serves the updated
   - remaining non-tagged sports text (for example `at` and detail/status text) keeps rotating base RSS color
 - Web API: endpoint contract implemented (`/api/status`, messages/text/color, speed/brightness/appearance, wifi, advanced, rss, factory-reset), including `rss_source_count` + `rss_sources[]` cache metadata in status.
 - Web API includes `/api/exit-config` for UI-triggered save-and-exit flow.
+- Web API includes OTA endpoints: `/api/ota/status`, `/api/ota/check`, `/api/ota/update`.
 - Web UI served from LittleFS (`/web/index.html`) for full setup:
   - message editing (5 slots)
   - appearance sliders
@@ -67,6 +79,7 @@ After web UI changes, run `pio run -t uploadfs` so the device serves the updated
   - RSS + sports source configuration
   - one-click `Save + Exit Config Mode` action
   - playback-order randomization toggle (`Randomize RSS/sports item order (shuffle, OFF by default)`)
+  - OTA panel for manifest URL, update check, and install trigger
   - factory reset confirmation
   - non-destructive status refresh loop (does not overwrite unsaved form edits while configuring)
   - UI build stamp and no-cache root response headers to reduce stale page confusion
@@ -137,6 +150,9 @@ Create a new version of the scroller that:
 - `POST /api/wifi`
 - `POST /api/advanced`
 - `POST /api/rss`
+- `GET /api/ota/status`
+- `POST /api/ota/check`
+- `POST /api/ota/update`
 - `POST /api/factory-reset`
 
 `GET /api/status` additionally reports:
@@ -164,6 +180,7 @@ Create a new version of the scroller that:
 - `include/SettingsStore.h` + `src/SettingsStore.cpp`
 - `include/WifiService.h` + `src/WifiService.cpp`
 - `include/WebService.h` + `src/WebService.cpp`
+- `include/OtaService.h` + `src/OtaService.cpp`
 - `include/RssSources.h` + `src/RssSources.cpp`
 - `include/RssSanitizer.h` + `src/RssSanitizer.cpp`
 - `include/RssFetcher.h` + `src/RssFetcher.cpp`

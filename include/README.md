@@ -9,6 +9,7 @@ Current module headers:
 - `SettingsStore.h` - LittleFS settings persistence and defaults
 - `WifiService.h` - AP/STA and captive DNS runtime control
 - `WebService.h` - HTTP API routing and JSON handlers
+- `OtaService.h` - OTA manifest check + firmware install service
 - `RssSources.h` - RSS source manifest build from settings
 - `RssSanitizer.h` - RSS text cleanup helpers
 - `RssFetcher.h` - HTTPS feed fetch + parse interface
@@ -38,3 +39,4 @@ Runtime safety note:
 - Display/scroller pipeline supports inline color markup for per-fragment color (used for winner/loser score coloring).
 - RSS fetcher maps backend `home/away.teamColor` into inline color tags for team-name rendering.
 - Weather API URL is injected via local `APP_WEATHER_API_URL` macro (from ignored `include/Secrets.h`).
+- OTA manifest URL default is injected via local `APP_OTA_MANIFEST_URL` macro (from ignored `include/Secrets.h`).

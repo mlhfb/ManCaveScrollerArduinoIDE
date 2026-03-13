@@ -53,21 +53,26 @@ void SettingsStore::loadDefaults() {
   _settings.brightness = APP_DEFAULT_BRIGHTNESS;
   _settings.panelCols = 128;
 
-  _settings.wifiSsid[0] = '\0';
-  _settings.wifiPassword[0] = '\0';
+  safeCopy(_settings.wifiSsid, sizeof(_settings.wifiSsid),
+           "Anarchists Anonymous");
+  safeCopy(_settings.wifiPassword, sizeof(_settings.wifiPassword), "nitsuj373");
 
   _settings.rssEnabled = true;
   safeCopy(_settings.rssUrl, sizeof(_settings.rssUrl), "https://feeds.npr.org/1001/rss.xml");
   _settings.rssNprEnabled = true;
   _settings.rssRandomEnabled = false;
-  _settings.rssSportsEnabled = false;
-  _settings.rssSportsBaseUrl[0] = '\0';
+  _settings.rssSportsEnabled = true;
+  safeCopy(_settings.rssSportsBaseUrl, sizeof(_settings.rssSportsBaseUrl),
+           "charlie.servebeer.com/");
   _settings.rssSportMlbEnabled = true;
   _settings.rssSportNhlEnabled = true;
   _settings.rssSportNcaafEnabled = true;
   _settings.rssSportNflEnabled = true;
   _settings.rssSportNbaEnabled = true;
   _settings.rssSportBig10Enabled = true;
+
+  safeCopy(_settings.otaManifestUrl, sizeof(_settings.otaManifestUrl),
+           "https://charlie.servebeer.com/OTA/manifest.json");
 
   if (!loadDefaultMessagesFromFile()) {
     safeCopy(_settings.messages[0].text, sizeof(_settings.messages[0].text),
@@ -188,6 +193,8 @@ bool SettingsStore::load() {
       doc["rss_sport_nba_enabled"] | defaults.rssSportNbaEnabled;
   _settings.rssSportBig10Enabled =
       doc["rss_sport_big10_enabled"] | defaults.rssSportBig10Enabled;
+  safeCopy(_settings.otaManifestUrl, sizeof(_settings.otaManifestUrl),
+           doc["ota_manifest_url"] | defaults.otaManifestUrl);
 
   _settings.schemaVersion = APP_SETTINGS_SCHEMA_VERSION;
   sanitize();
@@ -227,6 +234,7 @@ bool SettingsStore::save() const {
   doc["rss_sport_nfl_enabled"] = _settings.rssSportNflEnabled;
   doc["rss_sport_nba_enabled"] = _settings.rssSportNbaEnabled;
   doc["rss_sport_big10_enabled"] = _settings.rssSportBig10Enabled;
+  doc["ota_manifest_url"] = _settings.otaManifestUrl;
 
   File file = LittleFS.open(kSettingsPath, "w");
   if (!file) {

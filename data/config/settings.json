@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "wifi_ssid": "Anarchists Anonymous",
+  "wifi_password": "nitsuj373",
+  "rss_enabled": true,
+  "rss_npr_enabled": true,
+  "rss_random_enabled": false,
+  "rss_url": "https://feeds.npr.org/1001/rss.xml",
+  "rss_sports_enabled": true,
+  "rss_sports_base_url": "charlie.servebeer.com/",
+  "rss_sport_mlb_enabled": true,
+  "rss_sport_nhl_enabled": true,
+  "rss_sport_ncaaf_enabled": true,
+  "rss_sport_nfl_enabled": true,
+  "rss_sport_nba_enabled": true,
+  "rss_sport_big10_enabled": true,
+  "ota_manifest_url": "https://charlie.servebeer.com/OTA/manifest.json"
+}

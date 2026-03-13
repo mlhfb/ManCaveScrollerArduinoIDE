@@ -166,7 +166,7 @@
 <body>
   <h1>ManCaveScroller</h1>
   <div style="text-align:center;font-size:0.72rem;color:#94a3b8;margin-top:-10px;margin-bottom:8px;">
-    UI build: 2026-02-26
+    UI build: 2026-03-12
   </div>
   <div id="status" class="status">Loading...</div>
 
@@ -225,7 +225,7 @@
         <option value="96">96</option>
         <option value="128">128</option>
       </select>
-      <button class="btn" onclick="saveAdvanced()">Save Panel Size</button>
+      <button class="btn" onclick="saveAdvanced()">Save Advanced</button>
 
       <label><input id="rssEnabled" type="checkbox"> Enable RSS</label>
       <label><input id="nprEnabled" type="checkbox"> Enable NPR source</label>
@@ -255,6 +255,13 @@
 
       <label>RSS Cache Status</label>
       <div id="rssCacheStatus"></div>
+
+      <label>OTA Updates</label>
+      <label for="otaManifestUrl">Manifest URL</label>
+      <input id="otaManifestUrl" type="text" placeholder="https://your-domain.example/ota/manifest.json">
+      <div id="otaStatus" class="cache-line">OTA status unavailable</div>
+      <button class="btn" onclick="checkOta()">Check for OTA Update</button>
+      <button class="btn" onclick="installOta()">Install Available Update</button>
 
       <button class="btn btn-warn" onclick="factoryReset()">Factory Reset</button>
       <button class="btn btn-alt" onclick="showMain()">Back</button>
@@ -368,6 +375,29 @@
       g("rssCacheStatus").innerHTML = html;
     }
 
+    function renderOtaStatus(ota) {
+      if (!ota || typeof ota !== "object") {
+        g("otaStatus").innerHTML = "OTA status unavailable";
+        return;
+      }
+
+      const state = ota.state || "unknown";
+      const currentVersion = ota.current_version || "unknown";
+      const availableVersion = ota.available_version || "n/a";
+      const hasUpdate = !!ota.has_update;
+      const errorText = ota.last_error ? ("<br><span style=\"color:#f87171\">error: " +
+        String(ota.last_error).replace(/</g, "&lt;") + "</span>") : "";
+      const fwSize = ota.firmware_size ? Number(ota.firmware_size) : 0;
+
+      g("otaStatus").innerHTML =
+        "<b>state:</b> " + String(state).replace(/</g, "&lt;") +
+        "<br><b>current:</b> " + String(currentVersion).replace(/</g, "&lt;") +
+        "<br><b>available:</b> " + String(availableVersion).replace(/</g, "&lt;") +
+        "<br><b>update ready:</b> " + hasUpdate +
+        "<br><b>firmware size:</b> " + (fwSize > 0 ? fwSize : "n/a") +
+        errorText;
+    }
+
     function showMessages() {
       renderMessageEditor();
       g("mainView").className = "hidden";
@@ -436,7 +466,8 @@
     async function saveAdvanced() {
       try {
         const result = await callApi("/api/advanced", "POST", {
-          panel_cols: Number(g("panelCols").value)
+          panel_cols: Number(g("panelCols").value),
+          ota_manifest_url: g("otaManifestUrl").value.trim()
         });
         setStatus(result.status || "Advanced settings updated", true);
       } catch (err) {
@@ -542,7 +573,8 @@
           password: g("password").value
         });
         await callApi("/api/advanced", "POST", {
-          panel_cols: Number(g("panelCols").value)
+          panel_cols: Number(g("panelCols").value),
+          ota_manifest_url: g("otaManifestUrl").value.trim()
         });
         await callApi("/api/rss", "POST", {
           enabled: g("rssEnabled").checked,
@@ -572,6 +604,39 @@
       }
     }
 
+    async function checkOta() {
+      try {
+        const manifestUrl = g("otaManifestUrl").value.trim();
+        const payload = {};
+        if (manifestUrl) {
+          payload.manifest_url = manifestUrl;
+        }
+        const result = await callApi("/api/ota/check", "POST", payload);
+        setStatus((result.status || "OTA check complete") + " | state: " +
+          (result.state || "unknown"), true);
+        await loadStatus(false);
+      } catch (err) {
+        setStatus("OTA check failed: " + err.message, false);
+      }
+    }
+
+    async function installOta() {
+      if (!confirm("Install available OTA update and reboot now?")) {
+        return;
+      }
+      try {
+        const manifestUrl = g("otaManifestUrl").value.trim();
+        const payload = {};
+        if (manifestUrl) {
+          payload.manifest_url = manifestUrl;
+        }
+        const result = await callApi("/api/ota/update", "POST", payload);
+        setStatus(result.status || "OTA install started", true);
+      } catch (err) {
+        setStatus("OTA install failed: " + err.message, false);
+      }
+    }
+
     async function loadStatus(applyFormValues = true) {
       try {
         const status = await callApi("/api/status", "GET");
@@ -588,6 +653,8 @@
           g("ssid").value = status.wifi_ssid ?? "";
           g("password").value = status.wifi_password ?? "";
           g("panelCols").value = status.panel_cols ?? 128;
+          g("otaManifestUrl").value = status.ota_manifest_url ??
+            (status.ota?.manifest_url ?? "");
 
           g("rssEnabled").checked = !!status.rss_enabled;
           g("nprEnabled").checked = status.rss_npr_enabled !== false;
@@ -607,6 +674,7 @@
           renderMessagePreview();
         }
         renderRssCacheStatus(status);
+        renderOtaStatus(status.ota || {});
         setStatus("WiFi: " + (status.wifi_mode || "Unknown") + " | IP: " + (status.ip || "0.0.0.0"), true);
       } catch (err) {
         setStatus("Status load failed: " + err.message, false);

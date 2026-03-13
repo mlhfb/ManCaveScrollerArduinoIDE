@@ -1,5 +1,10 @@
 # OTA Update Draft (ESP32 4MB, Current Project)
 
+Implementation note:
+- This document started as a design draft before OTA implementation.
+- Current branch has implemented OTA partitions, OTA service endpoints, OTA UI controls, and backend how-to.
+- See `README.md` and `OTA_BACKEND_HOWTO.md` for current operational behavior.
+
 ## 1) Current State and Constraints
 
 - Board flash: 4MB (`0x400000`)

@@ -12,6 +12,7 @@ Planned content:
 Current content:
 - `/web/index.html`: full setup UI (messages, appearance, WiFi, advanced/RSS, factory reset)
 - `/config/default_messages.json`: startup defaults for 5 message slots
+- `/config/settings.json`: baseline default settings seed (WiFi/RSS/OTA manifest URL)
 
 Documentation note:
 - Refreshed with current runtime defaults: scroll delay boots at `0 ms`, pixel step boots at `1`.
@@ -24,7 +25,9 @@ Documentation note:
 - WiFi card includes `Save + Exit Config Mode` button (saves all UI sections, then calls `/api/exit-config`).
 - Randomization toggle is OFF by default (`rss_random_enabled=false`) on fresh/default settings.
 - WiFi form includes a password visibility toggle button.
-- Current page stamp: `UI build: 2026-02-26`.
+- Advanced view includes OTA controls (manifest URL + check/install actions).
+- Advanced settings save now persists OTA manifest URL (`ota_manifest_url`) to `/config/settings.json`.
+- Current page stamp: `UI build: 2026-03-12`.
 - If browser still shows an older UI (missing playback toggle), re-run `pio run -t uploadfs` and hard-refresh browser cache.
 - Sports backend URL generation now targets `espn_scores_rss.php` with `format=json`.
 - Sports messages now render as a single combined line per item (matchup + score/start detail).

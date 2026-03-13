@@ -4,11 +4,16 @@
 #include "AppTypes.h"
 #include "ContentScheduler.h"
 #include "DisplayPanel.h"
+#include "OtaService.h"
 #include "RssRuntime.h"
 #include "Scroller.h"
 #include "SettingsStore.h"
 #include "WebService.h"
 #include "WifiService.h"
+
+#ifndef APP_FIRMWARE_VERSION
+#define APP_FIRMWARE_VERSION "0.0.0-dev"
+#endif
 
 namespace {
 constexpr uint8_t kConfigButtonPin = 0;  // BOOT button on ESP32 DevKit
@@ -22,6 +27,7 @@ constexpr const char* kBootLoadingText = "Now Loading...";
 
 SettingsStore gSettingsStore;
 WifiService gWifiService;
+OtaService gOtaService(gWifiService);
 RssRuntime gRssRuntime(gSettingsStore, gWifiService);
 DisplayPanel gDisplay(APP_MATRIX_WIDTH, APP_MATRIX_HEIGHT);
 Scroller gScroller(gDisplay);
@@ -151,6 +157,7 @@ void applyRuntimeFromSettings(const AppSettings& settings) {
   gScheduler.setMessageDelayMs(appScrollDelayForSpeed(gScrollSpeed));
   gScheduler.setMessagePixelsPerTick(gPixelStep);
   syncSchedulerMessagesFromSettings();
+  gOtaService.setDefaultManifestUrl(settings.otaManifestUrl);
   gRssRuntime.onSettingsChanged(settings);
   applySchedulerMode();
 }
@@ -437,6 +444,8 @@ void setup() {
   Serial.println();
   Serial.println("ManCaveScrollerArduinoIDE");
   Serial.println("RSS/cache runtime integration build");
+  Serial.print("Firmware version: ");
+  Serial.println(APP_FIRMWARE_VERSION);
 
   pinMode(kConfigButtonPin, INPUT_PULLUP);
   pinMode(kEncoderButtonPin, INPUT);
@@ -462,8 +471,10 @@ void setup() {
   gWebService.setOnFactoryResetRequested(onFactoryResetRequested);
   gWebService.setOnExitConfigRequested(onExitConfigRequested);
   gWebService.setRssRuntime(&gRssRuntime);
+  gWebService.setOtaService(&gOtaService);
 
   gWifiService.begin();
+  gOtaService.begin(APP_FIRMWARE_VERSION);
   if (!gRssRuntime.begin()) {
     Serial.println("RSS runtime init failed");
   }
