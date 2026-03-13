@@ -46,6 +46,8 @@ struct AppSettings {
   bool rssSportNflEnabled;
   bool rssSportNbaEnabled;
   bool rssSportBig10Enabled;
+
+  char otaManifestUrl[APP_MAX_URL_LEN + 1];
 };
 
 struct RssSource {

@@ -3,10 +3,14 @@
 #include <LittleFS.h>
 #include <WebServer.h>
 
+#include "AppConfig.h"
+#include "OtaService.h"
 #include "RssRuntime.h"
 
 namespace {
 const char* kUiPath = "/web/index.html";
+constexpr int kBrightnessMin = 0;
+constexpr int kBrightnessMax = 255;
 }
 
 WebService::WebService(SettingsStore& store, WifiService& wifiService)
@@ -14,6 +18,7 @@ WebService::WebService(SettingsStore& store, WifiService& wifiService)
       _store(store),
       _wifiService(wifiService),
       _rssRuntime(nullptr),
+      _otaService(nullptr),
       _onSettingsChanged(nullptr),
       _onWifiConnectRequested(nullptr),
       _onFactoryResetRequested(nullptr),
@@ -70,6 +75,8 @@ void WebService::setOnExitConfigRequested(VoidCallback cb) {
 
 void WebService::setRssRuntime(RssRuntime* rssRuntime) { _rssRuntime = rssRuntime; }
 
+void WebService::setOtaService(OtaService* otaService) { _otaService = otaService; }
+
 void WebService::registerRoutes() {
   _server->on("/", HTTP_GET, [this]() { handleRoot(); });
   _server->on("/favicon.ico", HTTP_GET, [this]() { _server->send(204, "text/plain", ""); });
@@ -86,6 +93,9 @@ void WebService::registerRoutes() {
   _server->on("/api/wifi", HTTP_POST, [this]() { handleWifi(); });
   _server->on("/api/advanced", HTTP_POST, [this]() { handleAdvanced(); });
   _server->on("/api/rss", HTTP_POST, [this]() { handleRss(); });
+  _server->on("/api/ota/status", HTTP_GET, [this]() { handleOtaStatus(); });
+  _server->on("/api/ota/check", HTTP_POST, [this]() { handleOtaCheck(); });
+  _server->on("/api/ota/update", HTTP_POST, [this]() { handleOtaUpdate(); });
   _server->on("/api/exit-config", HTTP_POST, [this]() { handleExitConfig(); });
   _server->on("/api/factory-reset", HTTP_POST, [this]() { handleFactoryReset(); });
   _server->onNotFound([this]() { handleNotFound(); });
@@ -135,7 +145,7 @@ void WebService::handleRoot() const {
 
 void WebService::handleStatus() const {
   const AppSettings& s = _store.settings();
-  DynamicJsonDocument doc(6144);
+  DynamicJsonDocument doc(8192);
 
   JsonArray msgs = doc.createNestedArray("messages");
   for (size_t i = 0; i < APP_MAX_MESSAGES; i++) {
@@ -154,6 +164,7 @@ void WebService::handleStatus() const {
   doc["ip"] = _wifiService.ip();
   doc["wifi_ssid"] = s.wifiSsid;
   doc["wifi_password"] = s.wifiPassword;
+  doc["ota_manifest_url"] = s.otaManifestUrl;
 
   doc["rss_enabled"] = s.rssEnabled;
   doc["rss_url"] = s.rssUrl;
@@ -188,6 +199,27 @@ void WebService::handleStatus() const {
   } else {
     doc["rss_source_count"] = 0;
     doc.createNestedArray("rss_sources");
+  }
+
+  JsonObject ota = doc.createNestedObject("ota");
+  if (_otaService != nullptr) {
+    _otaService->appendStatus(ota);
+  } else {
+    ota["state"] = "unavailable";
+    ota["current_version"] = "unknown";
+    ota["available_version"] = "";
+    ota["current_littlefs_version"] = "";
+    ota["available_littlefs_version"] = "";
+    ota["manifest_url"] = "";
+    ota["firmware_url"] = "";
+    ota["firmware_size"] = 0;
+    ota["littlefs_url"] = "";
+    ota["littlefs_size"] = 0;
+    ota["has_update"] = false;
+    ota["has_firmware_update"] = false;
+    ota["has_littlefs_update"] = false;
+    ota["last_error"] = "";
+    ota["wifi_connected"] = _wifiService.isConnected();
   }
 
   sendJson(doc, 200);
@@ -272,8 +304,20 @@ void WebService::handleSpeed() {
     sendError("Invalid JSON");
     return;
   }
+
+  if (!doc["speed"].is<int>()) {
+    sendError("Speed must be an integer from 1 to 10");
+    return;
+  }
+
+  const int speed = doc["speed"].as<int>();
+  if (speed < APP_SCROLL_SPEED_MIN || speed > APP_SCROLL_SPEED_MAX) {
+    sendError("Speed must be between 1 and 10");
+    return;
+  }
+
   AppSettings& s = _store.mutableSettings();
-  s.speed = static_cast<uint8_t>(doc["speed"] | s.speed);
+  s.speed = static_cast<uint8_t>(speed);
   _store.save();
   if (_onSettingsChanged) _onSettingsChanged(s);
   sendStatusMessage("Speed updated");
@@ -285,8 +329,20 @@ void WebService::handleBrightness() {
     sendError("Invalid JSON");
     return;
   }
+
+  if (!doc["brightness"].is<int>()) {
+    sendError("Brightness must be an integer from 0 to 255");
+    return;
+  }
+
+  const int brightness = doc["brightness"].as<int>();
+  if (brightness < kBrightnessMin || brightness > kBrightnessMax) {
+    sendError("Brightness must be between 0 and 255");
+    return;
+  }
+
   AppSettings& s = _store.mutableSettings();
-  s.brightness = static_cast<uint8_t>(doc["brightness"] | s.brightness);
+  s.brightness = static_cast<uint8_t>(brightness);
   _store.save();
   if (_onSettingsChanged) _onSettingsChanged(s);
   sendStatusMessage("Brightness updated");
@@ -298,13 +354,43 @@ void WebService::handleAppearance() {
     sendError("Invalid JSON");
     return;
   }
+
   AppSettings& s = _store.mutableSettings();
+  bool changed = false;
+
   if (!doc["speed"].isNull()) {
-    s.speed = static_cast<uint8_t>(doc["speed"] | s.speed);
+    if (!doc["speed"].is<int>()) {
+      sendError("Speed must be an integer from 1 to 10");
+      return;
+    }
+    const int speed = doc["speed"].as<int>();
+    if (speed < APP_SCROLL_SPEED_MIN || speed > APP_SCROLL_SPEED_MAX) {
+      sendError("Speed must be between 1 and 10");
+      return;
+    }
+    s.speed = static_cast<uint8_t>(speed);
+    changed = true;
   }
+
   if (!doc["brightness"].isNull()) {
-    s.brightness = static_cast<uint8_t>(doc["brightness"] | s.brightness);
+    if (!doc["brightness"].is<int>()) {
+      sendError("Brightness must be an integer from 0 to 255");
+      return;
+    }
+    const int brightness = doc["brightness"].as<int>();
+    if (brightness < kBrightnessMin || brightness > kBrightnessMax) {
+      sendError("Brightness must be between 0 and 255");
+      return;
+    }
+    s.brightness = static_cast<uint8_t>(brightness);
+    changed = true;
   }
+
+  if (!changed) {
+    sendError("Missing 'speed' or 'brightness' field");
+    return;
+  }
+
   _store.save();
   if (_onSettingsChanged) _onSettingsChanged(s);
   sendStatusMessage("Appearance updated");
@@ -340,6 +426,14 @@ void WebService::handleAdvanced() {
   uint8_t panel = static_cast<uint8_t>(doc["panel_cols"] | s.panelCols);
   if (panel == 32 || panel == 64 || panel == 96 || panel == 128) {
     s.panelCols = panel;
+  }
+  if (!doc["ota_manifest_url"].isNull()) {
+    strlcpy(s.otaManifestUrl, doc["ota_manifest_url"] | s.otaManifestUrl,
+            sizeof(s.otaManifestUrl));
+  }
+  if (!doc["otaManifestUrl"].isNull()) {
+    strlcpy(s.otaManifestUrl, doc["otaManifestUrl"] | s.otaManifestUrl,
+            sizeof(s.otaManifestUrl));
   }
   _store.save();
   if (_onSettingsChanged) _onSettingsChanged(s);
@@ -398,6 +492,99 @@ void WebService::handleRss() {
   }
   if (_onSettingsChanged) _onSettingsChanged(s);
   sendStatusMessage("RSS settings updated");
+}
+
+void WebService::handleOtaStatus() const {
+  DynamicJsonDocument doc(1024);
+  if (_otaService != nullptr) {
+    _otaService->appendStatus(doc.to<JsonObject>());
+  } else {
+    doc["state"] = "unavailable";
+    doc["current_version"] = "unknown";
+    doc["available_version"] = "";
+    doc["current_littlefs_version"] = "";
+    doc["available_littlefs_version"] = "";
+    doc["manifest_url"] = "";
+    doc["firmware_url"] = "";
+    doc["firmware_size"] = 0;
+    doc["littlefs_url"] = "";
+    doc["littlefs_size"] = 0;
+    doc["has_update"] = false;
+    doc["has_firmware_update"] = false;
+    doc["has_littlefs_update"] = false;
+    doc["last_error"] = "OTA service not initialized";
+    doc["wifi_connected"] = _wifiService.isConnected();
+  }
+  sendJson(doc, 200);
+}
+
+void WebService::handleOtaCheck() {
+  if (_otaService == nullptr) {
+    sendError("OTA service not initialized", 500);
+    return;
+  }
+
+  DynamicJsonDocument body(512);
+  const bool hasBody = parseBodyJson(body);
+  const char* manifestUrl = nullptr;
+  if (hasBody && !body["manifest_url"].isNull()) {
+    manifestUrl = body["manifest_url"];
+  }
+
+  if (!_otaService->checkForUpdate(manifestUrl)) {
+    sendError(_otaService->lastError(), 400);
+    return;
+  }
+
+  DynamicJsonDocument doc(1024);
+  doc["status"] = "OTA check complete";
+  doc["state"] = _otaService->stateString();
+  doc["has_update"] = _otaService->hasPendingUpdate();
+  doc["has_firmware_update"] = _otaService->hasPendingFirmwareUpdate();
+  doc["has_littlefs_update"] = _otaService->hasPendingLittleFsUpdate();
+  doc["current_version"] = _otaService->currentVersion();
+  doc["available_version"] = _otaService->availableVersion();
+  doc["current_littlefs_version"] = _otaService->currentLittleFsVersion();
+  doc["available_littlefs_version"] = _otaService->availableLittleFsVersion();
+  doc["manifest_url"] = _otaService->lastManifestUrl();
+  sendJson(doc, 200);
+}
+
+void WebService::handleOtaUpdate() {
+  if (_otaService == nullptr) {
+    sendError("OTA service not initialized", 500);
+    return;
+  }
+
+  DynamicJsonDocument body(512);
+  const bool hasBody = parseBodyJson(body);
+  const char* manifestUrl = nullptr;
+  if (hasBody && !body["manifest_url"].isNull()) {
+    manifestUrl = body["manifest_url"];
+  }
+
+  // If a manifest URL was supplied, refresh update metadata before install.
+  if (manifestUrl != nullptr && manifestUrl[0] != '\0') {
+    if (!_otaService->checkForUpdate(manifestUrl)) {
+      sendError(_otaService->lastError(), 400);
+      return;
+    }
+  }
+
+  if (!_otaService->hasPendingUpdate()) {
+    sendError("No pending OTA update available", 400);
+    return;
+  }
+  if (!_otaService->installAvailableUpdate()) {
+    sendError(_otaService->lastError(), 400);
+    return;
+  }
+
+  DynamicJsonDocument doc(256);
+  doc["status"] = "OTA installed; rebooting";
+  sendJson(doc, 200);
+  delay(200);
+  ESP.restart();
 }
 
 void WebService::handleFactoryReset() {

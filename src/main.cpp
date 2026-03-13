@@ -4,24 +4,34 @@
 #include "AppTypes.h"
 #include "ContentScheduler.h"
 #include "DisplayPanel.h"
+#include "OtaService.h"
 #include "RssRuntime.h"
 #include "Scroller.h"
 #include "SettingsStore.h"
 #include "WebService.h"
 #include "WifiService.h"
 
+#ifndef APP_FIRMWARE_VERSION
+#define APP_FIRMWARE_VERSION "0.0.0-dev"
+#endif
+
 namespace {
 constexpr uint8_t kConfigButtonPin = 0;  // BOOT button on ESP32 DevKit
-constexpr uint8_t kEncoderButtonPin = 35;  // External encoder button (active-low)
+constexpr uint8_t kServiceButtonPin = 25;  // External service button (active-low)
 constexpr uint32_t kButtonDebounceMs = 250;
 constexpr uint32_t kConfigPromptRefreshMs = 2000;
 constexpr uint32_t kBootRefreshTaskStackWords = 6144;
 constexpr BaseType_t kBootRefreshTaskPriority = 1;
 constexpr const char* kBootLoadingText = "Now Loading...";
+constexpr const char* kBootOtaUpdatingText = "Updating Firmware ";
+constexpr const char* kBootOtaUpdatingLittleFsText = "Updating Filesystem ";
+constexpr uint32_t kBootOtaStaTimeoutMs = 8000;
+constexpr uint8_t kBootOtaStaRetries = 2;
 }
 
 SettingsStore gSettingsStore;
 WifiService gWifiService;
+OtaService gOtaService(gWifiService);
 RssRuntime gRssRuntime(gSettingsStore, gWifiService);
 DisplayPanel gDisplay(APP_MATRIX_WIDTH, APP_MATRIX_HEIGHT);
 Scroller gScroller(gDisplay);
@@ -41,8 +51,8 @@ uint32_t gLastConfigPromptMs = 0;
 
 bool gLastButtonState = true;
 uint32_t gLastButtonChangeMs = 0;
-bool gLastEncoderButtonState = true;
-uint32_t gLastEncoderButtonChangeMs = 0;
+bool gLastServiceButtonState = true;
+uint32_t gLastServiceButtonChangeMs = 0;
 
 volatile bool gExitConfigRequested = false;
 
@@ -52,6 +62,8 @@ volatile bool gBootRefreshSuccess = false;
 TaskHandle_t gBootRefreshTaskHandle = nullptr;
 
 void printStatus();
+void showStaticRepeatingText(const char* text, uint8_t r, uint8_t g, uint8_t b);
+void runBootOtaIfAvailable();
 
 void bootRefreshTask(void* /*param*/) {
   const bool refreshed = gRssRuntime.refreshAllNow();
@@ -151,6 +163,7 @@ void applyRuntimeFromSettings(const AppSettings& settings) {
   gScheduler.setMessageDelayMs(appScrollDelayForSpeed(gScrollSpeed));
   gScheduler.setMessagePixelsPerTick(gPixelStep);
   syncSchedulerMessagesFromSettings();
+  gOtaService.setDefaultManifestUrl(settings.otaManifestUrl);
   gRssRuntime.onSettingsChanged(settings);
   applySchedulerMode();
 }
@@ -207,6 +220,77 @@ void completeBootLoadingIfReady(bool cycleComplete) {
   Serial.print("Boot refresh done: ");
   Serial.println(gBootRefreshSuccess ? "fresh content updated" : "using cache/fallback");
   printStatus();
+}
+
+void showStaticRepeatingText(const char* text, uint8_t r, uint8_t g, uint8_t b) {
+  if (text == nullptr || text[0] == '\0') {
+    return;
+  }
+
+  const String banner = text;
+  const int16_t textWidth = static_cast<int16_t>(banner.length() * 6);
+  if (textWidth <= 0) {
+    return;
+  }
+
+  const uint16_t color = gDisplay.color(r, g, b);
+  gDisplay.clear();
+  for (int16_t x = 0; x < static_cast<int16_t>(gDisplay.width()); x += textWidth) {
+    gDisplay.drawTextAt(x, banner.c_str(), color);
+  }
+  gDisplay.show();
+}
+
+void runBootOtaIfAvailable() {
+  const AppSettings& settings = gSettingsStore.settings();
+  if (settings.wifiSsid[0] == '\0') {
+    Serial.println("[OTA] Boot check skipped: no WiFi credentials");
+    return;
+  }
+
+  if (!gWifiService.connectSta(settings.wifiSsid, settings.wifiPassword,
+                               kBootOtaStaTimeoutMs, kBootOtaStaRetries)) {
+    Serial.println("[OTA] Boot check skipped: WiFi connect failed");
+    gWifiService.stopWifi();
+    return;
+  }
+
+  if (!gOtaService.checkForUpdate(settings.otaManifestUrl)) {
+    Serial.print("[OTA] Check failed: ");
+    Serial.println(gOtaService.lastError());
+    gWifiService.stopWifi();
+    return;
+  }
+
+  if (!gOtaService.hasPendingUpdate()) {
+    Serial.println("[OTA] No update available");
+    gWifiService.stopWifi();
+    return;
+  }
+
+  const bool firmwareUpdate = gOtaService.hasPendingFirmwareUpdate();
+  const bool littleFsUpdate = gOtaService.hasPendingLittleFsUpdate();
+  if (firmwareUpdate) {
+    Serial.print("[OTA] Installing firmware update version ");
+    Serial.println(gOtaService.availableVersion());
+  } else if (littleFsUpdate) {
+    Serial.print("[OTA] Installing littlefs update version ");
+    Serial.println(gOtaService.availableLittleFsVersion());
+  }
+
+  showStaticRepeatingText(
+      firmwareUpdate ? kBootOtaUpdatingText : kBootOtaUpdatingLittleFsText,
+      255, 195, 0);
+  if (!gOtaService.installAvailableUpdate()) {
+    Serial.print("[OTA] Install failed: ");
+    Serial.println(gOtaService.lastError());
+    gWifiService.stopWifi();
+    return;
+  }
+
+  Serial.println("[OTA] Update installed, rebooting");
+  delay(300);
+  ESP.restart();
 }
 
 bool provideRssSegment(String& text, uint8_t& r, uint8_t& g, uint8_t& b) {
@@ -427,8 +511,8 @@ void handleConfigButton() {
   };
 
   processButton(kConfigButtonPin, gLastButtonState, gLastButtonChangeMs);
-  processButton(kEncoderButtonPin, gLastEncoderButtonState,
-                gLastEncoderButtonChangeMs);
+  processButton(kServiceButtonPin, gLastServiceButtonState,
+                gLastServiceButtonChangeMs);
 }
 
 void setup() {
@@ -437,11 +521,17 @@ void setup() {
   Serial.println();
   Serial.println("ManCaveScrollerArduinoIDE");
   Serial.println("RSS/cache runtime integration build");
+  Serial.print("Firmware version: ");
+  Serial.println(APP_FIRMWARE_VERSION);
+  Serial.print("Config button pin: ");
+  Serial.println(kConfigButtonPin);
+  Serial.print("Service button pin: ");
+  Serial.println(kServiceButtonPin);
 
   pinMode(kConfigButtonPin, INPUT_PULLUP);
-  pinMode(kEncoderButtonPin, INPUT);
+  pinMode(kServiceButtonPin, INPUT_PULLUP);
   gLastButtonState = digitalRead(kConfigButtonPin);
-  gLastEncoderButtonState = digitalRead(kEncoderButtonPin);
+  gLastServiceButtonState = digitalRead(kServiceButtonPin);
 
   if (!gSettingsStore.begin()) {
     Serial.println("Settings/LittleFS init failed");
@@ -462,8 +552,10 @@ void setup() {
   gWebService.setOnFactoryResetRequested(onFactoryResetRequested);
   gWebService.setOnExitConfigRequested(onExitConfigRequested);
   gWebService.setRssRuntime(&gRssRuntime);
+  gWebService.setOtaService(&gOtaService);
 
   gWifiService.begin();
+  gOtaService.begin(APP_FIRMWARE_VERSION);
   if (!gRssRuntime.begin()) {
     Serial.println("RSS runtime init failed");
   }
@@ -480,6 +572,7 @@ void setup() {
   }
 
   applyRuntimeFromSettings(gSettingsStore.settings());
+  runBootOtaIfAvailable();
   gScheduler.setRssPlaceholder("Loading RSS feed cache", "Using message fallback");
   gScheduler.setRssSegmentProvider(provideRssSegment);
   gScheduler.setFallbackText("RSS unavailable fallback");

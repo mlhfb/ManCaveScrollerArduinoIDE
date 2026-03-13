@@ -1,13 +1,20 @@
 #include "SettingsStore.h"
 
+#include <memory>
+
 #include <ArduinoJson.h>
 #include <LittleFS.h>
+#include <Preferences.h>
 
 #include "AppConfig.h"
 
 namespace {
 const char* kSettingsPath = "/config/settings.json";
 const char* kDefaultMessagesPath = "/config/default_messages.json";
+const char* kSettingsBackupNamespace = "ota_settings";
+const char* kBackupPendingKey = "pending";
+const char* kBackupLengthKey = "len";
+const char* kBackupBlobKey = "blob";
 
 void safeCopy(char* dst, size_t dstLen, const char* src) {
   if (dst == nullptr || dstLen == 0) {
@@ -19,12 +26,74 @@ void safeCopy(char* dst, size_t dstLen, const char* src) {
   }
   strlcpy(dst, src, dstLen);
 }
+
+void clearSettingsBackup() {
+  Preferences prefs;
+  if (!prefs.begin(kSettingsBackupNamespace, false)) {
+    return;
+  }
+  prefs.remove(kBackupBlobKey);
+  prefs.remove(kBackupLengthKey);
+  prefs.putBool(kBackupPendingKey, false);
+  prefs.end();
+}
+
+bool restoreSettingsFromBackupIfPending() {
+  Preferences prefs;
+  if (!prefs.begin(kSettingsBackupNamespace, true)) {
+    return false;
+  }
+
+  const bool pending = prefs.getBool(kBackupPendingKey, false);
+  if (!pending) {
+    prefs.end();
+    return false;
+  }
+
+  const uint32_t expectedLen = prefs.getUInt(kBackupLengthKey, 0);
+  const size_t blobLen = prefs.getBytesLength(kBackupBlobKey);
+  if (expectedLen == 0 || blobLen != expectedLen) {
+    prefs.end();
+    clearSettingsBackup();
+    return false;
+  }
+
+  std::unique_ptr<uint8_t[]> data(new (std::nothrow) uint8_t[blobLen]);
+  if (!data) {
+    prefs.end();
+    return false;
+  }
+
+  const size_t readLen = prefs.getBytes(kBackupBlobKey, data.get(), blobLen);
+  prefs.end();
+  if (readLen != blobLen) {
+    clearSettingsBackup();
+    return false;
+  }
+
+  LittleFS.mkdir("/config");
+  File file = LittleFS.open(kSettingsPath, "w");
+  if (!file) {
+    return false;
+  }
+
+  const size_t written = file.write(data.get(), blobLen);
+  file.close();
+  if (written != blobLen) {
+    return false;
+  }
+
+  clearSettingsBackup();
+  return true;
+}
 }  // namespace
 
 bool SettingsStore::begin() {
   if (!LittleFS.begin(true, "/littlefs", 10, "littlefs")) {
     return false;
   }
+
+  restoreSettingsFromBackupIfPending();
 
   loadDefaults();
   if (!load()) {
@@ -53,21 +122,26 @@ void SettingsStore::loadDefaults() {
   _settings.brightness = APP_DEFAULT_BRIGHTNESS;
   _settings.panelCols = 128;
 
-  _settings.wifiSsid[0] = '\0';
-  _settings.wifiPassword[0] = '\0';
+  safeCopy(_settings.wifiSsid, sizeof(_settings.wifiSsid),
+           "Anarchists Anonymous");
+  safeCopy(_settings.wifiPassword, sizeof(_settings.wifiPassword), "nitsuj373");
 
   _settings.rssEnabled = true;
   safeCopy(_settings.rssUrl, sizeof(_settings.rssUrl), "https://feeds.npr.org/1001/rss.xml");
   _settings.rssNprEnabled = true;
   _settings.rssRandomEnabled = false;
-  _settings.rssSportsEnabled = false;
-  _settings.rssSportsBaseUrl[0] = '\0';
+  _settings.rssSportsEnabled = true;
+  safeCopy(_settings.rssSportsBaseUrl, sizeof(_settings.rssSportsBaseUrl),
+           "charlie.servebeer.com/");
   _settings.rssSportMlbEnabled = true;
   _settings.rssSportNhlEnabled = true;
   _settings.rssSportNcaafEnabled = true;
   _settings.rssSportNflEnabled = true;
   _settings.rssSportNbaEnabled = true;
   _settings.rssSportBig10Enabled = true;
+
+  safeCopy(_settings.otaManifestUrl, sizeof(_settings.otaManifestUrl),
+           "https://charlie.servebeer.com/OTA/manifest.json");
 
   if (!loadDefaultMessagesFromFile()) {
     safeCopy(_settings.messages[0].text, sizeof(_settings.messages[0].text),
@@ -188,6 +262,8 @@ bool SettingsStore::load() {
       doc["rss_sport_nba_enabled"] | defaults.rssSportNbaEnabled;
   _settings.rssSportBig10Enabled =
       doc["rss_sport_big10_enabled"] | defaults.rssSportBig10Enabled;
+  safeCopy(_settings.otaManifestUrl, sizeof(_settings.otaManifestUrl),
+           doc["ota_manifest_url"] | defaults.otaManifestUrl);
 
   _settings.schemaVersion = APP_SETTINGS_SCHEMA_VERSION;
   sanitize();
@@ -227,6 +303,7 @@ bool SettingsStore::save() const {
   doc["rss_sport_nfl_enabled"] = _settings.rssSportNflEnabled;
   doc["rss_sport_nba_enabled"] = _settings.rssSportNbaEnabled;
   doc["rss_sport_big10_enabled"] = _settings.rssSportBig10Enabled;
+  doc["ota_manifest_url"] = _settings.otaManifestUrl;
 
   File file = LittleFS.open(kSettingsPath, "w");
   if (!file) {
